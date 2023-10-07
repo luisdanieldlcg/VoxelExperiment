@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+default-members = [
+    "explora",
+]
+members = [
+    "explora",
+    "common",
+    "render",
+    "server",
+    "server-cli"
+]
