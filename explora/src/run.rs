@@ -1,7 +1,7 @@
-use crate::{App, input::Input};
-use log::{info, debug};
+use crate::{input::Input, App};
+use log::info;
 use winit::{
-    event::{Event, WindowEvent, ElementState},
+    event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
 };
 
@@ -15,15 +15,14 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(..) => {},
                     WindowEvent::ScaleFactorChanged { .. } => {},
-                    WindowEvent::KeyboardInput {  input, .. } => {
+                    WindowEvent::KeyboardInput { input, .. } => {
                         let res = app.state.resource_mut::<Input>();
-                            debug!("pressed key: {:?}", input);
 
                         res.buttons[input.scancode as usize] = input.state == ElementState::Pressed;
                         if let Some(key) = input.virtual_keycode {
                             res.keys[key as usize] = input.state == ElementState::Pressed;
                         }
-                    }
+                    },
                     _ => (),
                 }
             },
@@ -31,9 +30,12 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
         }
         app.state.tick(app.clock.dt());
         app.clock.tick();
-        // let delta = app.state.resource::<DeltaTime>().0;
-        // log::debug!("Delta Time: {}", delta);
-        // let _ = app.state.resource::<Input>();
+
+        let input = app.state.resource::<Input>();
+        if input.is_key_down(winit::event::VirtualKeyCode::Escape) {
+            // just for testing
+            *control_flow = ControlFlow::Exit;
+        }
 
     });
 }

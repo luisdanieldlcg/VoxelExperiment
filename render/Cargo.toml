@@ -7,3 +7,8 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
+pollster = "0.3.0"
+wgpu = "0.17.1"
+winit = "0.28.7"
+common = { path = "../common", package = "explora_common"}
+bytemuck = "1.14.0"

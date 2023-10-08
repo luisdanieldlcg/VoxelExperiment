@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use apecs::IsResource;
-
 use crate::resources::DeltaTime;
+
+pub type SystemResult = apecs::anyhow::Result<apecs::ShouldContinue>;
 
 pub struct State {
     world: apecs::World,
@@ -24,20 +24,31 @@ impl State {
         }
     }
 
-    pub fn add_resource<R: IsResource>(&mut self, resource: R) {
+    pub fn add_system<T, F>(&mut self, name: impl AsRef<str>, sys_fn: F)
+    where
+        F: FnMut(T) -> SystemResult + Send + Sync + 'static,
+        T: apecs::CanFetch + 'static,
+    {
+        self.world.with_system::<T, F>(name, sys_fn).expect(
+            "Resources used by this system are not available\"
+            This is a bug in the code",
+        );
+    }
+
+    pub fn add_resource<R: apecs::IsResource>(&mut self, resource: R) {
         self.world.with_resource::<R>(resource).expect(
             "Tried to add a resource that already exists. \
             This is a bug in the code",
         );
     }
 
-    pub fn resource<R: IsResource>(&self) -> &R {
+    pub fn resource<R: apecs::IsResource>(&self) -> &R {
         self.world
             .resource::<R>()
             .expect("Tried to fetch an invalid resource")
     }
 
-    pub fn resource_mut<R: IsResource>(&mut self) -> &mut R {
+    pub fn resource_mut<R: apecs::IsResource>(&mut self) -> &mut R {
         self.world
             .resource_mut::<R>()
             .expect("Tried to fetch an invalid resource")

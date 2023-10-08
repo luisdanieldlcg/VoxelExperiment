@@ -1,11 +1,10 @@
-use winit::event::{VirtualKeyCode, ScanCode};
+use winit::event::{ScanCode, VirtualKeyCode};
 
 /// Input struct that holds the state of the keyboard and mouse.
-/// 
+///
 /// There are currently 163 keys supported by winit.
 /// With 256 we have some extra space for future keys.
 pub struct Input {
-
     pub keys: [bool; 256],
     pub buttons: [bool; 256],
     pub cursor: (f32, f32),
@@ -22,7 +21,6 @@ impl Default for Input {
 }
 
 impl Input {
-
     pub fn is_key_down(&self, key: VirtualKeyCode) -> bool {
         self.keys[key as usize]
     }
