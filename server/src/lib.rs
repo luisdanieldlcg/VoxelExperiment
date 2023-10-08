@@ -5,7 +5,6 @@ pub struct Server {}
 
 #[allow(clippy::new_without_default)]
 impl Server {
-    
     pub fn new() -> Self {
         info!("Server created.");
         Self {}
