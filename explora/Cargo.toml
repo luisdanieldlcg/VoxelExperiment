@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 render = { path = "../render", package = "explora_render" }
 common = { path = "../common", package = "explora_common" }
+log = { workspace = true }
+env_logger = "0.10.0"

@@ -10,3 +10,6 @@ members = [
     "server",
     "server-cli"
 ]
+
+[workspace.dependencies]
+log = "0.4.20"

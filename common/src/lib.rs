@@ -1,14 +1,12 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+use std::time::Duration;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct State {}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl State {
+
+    pub fn new() -> Self {
+        Self {}
     }
+
+    pub fn tick(&mut self, _: Duration) {}
 }
