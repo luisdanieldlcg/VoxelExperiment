@@ -1,10 +1,10 @@
+use common::clock::Clock;
 use server::Server;
 
 fn main() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Trace)
         .init();
-    let mut server = Server::new();
 
     log::info!("Test info");
     log::debug!("Test debug");
@@ -12,7 +12,11 @@ fn main() {
     log::error!("Test error");
     log::trace!("Test trace");
 
+    let mut server = Server::new();
+    let mut clock = Clock::default();
+
     loop {
-        server.tick(std::time::Duration::ZERO);
+        server.tick(clock.dt());
+        clock.tick();
     }
 }
