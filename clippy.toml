@@ -1,0 +1,3 @@
+# disallowed-methods = [
+#     "client::Client::unsafe_fn" <- example usage on user defined type
+# ]

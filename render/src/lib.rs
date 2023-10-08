@@ -1,6 +1,6 @@
-
 pub struct Renderer {}
 
+#[allow(clippy::new_without_default)]
 impl Renderer {
 
     pub fn new() -> Self {
