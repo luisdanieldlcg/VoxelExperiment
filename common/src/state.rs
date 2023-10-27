@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::resources::DeltaTime;
 
-pub type SystemResult = apecs::anyhow::Result<apecs::ShouldContinue>;
+pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;
 
 pub struct State {
     world: apecs::World,
@@ -26,7 +26,7 @@ impl State {
 
     pub fn add_system<T, F>(&mut self, name: impl AsRef<str>, sys_fn: F)
     where
-        F: FnMut(T) -> SystemResult + Send + Sync + 'static,
+        F: FnMut(T) -> SysResult + Send + Sync + 'static,
         T: apecs::CanFetch + 'static,
     {
         self.world.with_system::<T, F>(name, sys_fn).expect(
@@ -52,5 +52,9 @@ impl State {
         self.world
             .resource_mut::<R>()
             .expect("Tried to fetch an invalid resource")
+    }
+
+    pub fn query<Q: apecs::IsQuery + 'static>(&mut self) -> apecs::QueryGuard<'_, Q> {
+        self.world.query::<Q>()
     }
 }

@@ -1,3 +1,11 @@
+struct Globals {
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> globals: Globals;
+
 struct VertexInput {
     @location(0) vertices: vec3<f32>,
 };
@@ -9,7 +17,7 @@ struct VertexOutput {
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
-    output.vertices = vec4<f32>(input.vertices, 1.0);
+    output.vertices = globals.proj * globals.view * vec4<f32>(input.vertices, 1.0);
     return output;
 }
 
