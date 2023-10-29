@@ -42,9 +42,7 @@ fn main() {
     explora::run::run(event_loop, app);
 }
 
-fn setup(
-    (mut entities, _): (Write<Entities>, Write<Renderer, NoDefault>),
-) -> SysResult {
+fn setup((mut entities, _): (Write<Entities>, Write<Renderer, NoDefault>)) -> SysResult {
     let mut player = entities.create();
     // TODO: grab window / render surface size
     player.insert_component(Camera::new(800.0 / 600.0));

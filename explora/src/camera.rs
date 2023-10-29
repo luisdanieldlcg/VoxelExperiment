@@ -1,6 +1,7 @@
 use common::{
     ecs::{NoDefault, Query, Read, ShouldContinue, Write},
-    resources::DeltaTime, state::SysResult,
+    resources::DeltaTime,
+    state::SysResult,
 };
 
 use render::{Globals, Renderer};
@@ -32,7 +33,7 @@ impl Camera {
             pos: Vec3::new(0.0, 0.0, -2.0),
             target: Vec3::new(0.0, 0.0, 0.0),
             aspect,
-            fov: 45.0,
+            fov: 70.0,
             rot: Vec2::new(-46.0, 0.0),
         }
     }
@@ -45,9 +46,12 @@ impl Camera {
     }
 
     pub fn rotate(&mut self, dx: f32, dy: f32, _dt: f32) {
-        let sensitivty = 0.1;
-        self.rot.x += dx.to_radians() * sensitivty;
-        self.rot.y += -dy.to_radians() * sensitivty;
+        let sensitivity = 0.1;
+        let offset_x = dx * sensitivity;
+        let offset_y = dy * sensitivity;
+
+        self.rot.x += offset_x.to_radians();
+        self.rot.y += -offset_y.to_radians();
 
         self.rot.y = self.rot.y.clamp(
             -std::f32::consts::FRAC_PI_2 + 0.0001,

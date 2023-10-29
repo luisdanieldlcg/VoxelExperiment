@@ -2,7 +2,8 @@ use crate::{camera::Camera, error::Error, event::Events, input::Input};
 
 use common::{
     ecs::{NoDefault, Query, Read, ShouldContinue, Write},
-    resources::DeltaTime, state::SysResult,
+    resources::DeltaTime,
+    state::SysResult,
 };
 use render::Renderer;
 use winit::event_loop::EventLoop;

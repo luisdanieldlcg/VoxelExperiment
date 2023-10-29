@@ -1,11 +1,22 @@
+pub mod buffer;
 pub mod error;
+pub mod texture;
+pub mod vertex;
+pub mod atlas;
 
+use buffer::Buffer;
 use common::{
     ecs::{NoDefault, Read, ShouldContinue},
     state::SysResult,
 };
-use vek::Mat4;
-use wgpu::{util::DeviceExt, VertexBufferLayout};
+use texture::Texture;
+use vek::{Mat4, Vec3};
+use vertex::TerrainVertex;
+
+pub trait Vertex: Copy {
+    const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Zeroable, bytemuck::Pod)]
@@ -34,9 +45,12 @@ pub struct Renderer {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    globals_buffer: wgpu::Buffer,
-    globals_bindgroup: wgpu::BindGroup,
+    vertex_buffer: Buffer<TerrainVertex>,
+    globals_buffer: Buffer<Globals>,
+    index_buffer: Buffer<u16>,
+    globals_bind_group: wgpu::BindGroup,
+    texture_bind_group: wgpu::BindGroup,
+    depth_texture: Texture,
 }
 
 impl Renderer {
@@ -89,13 +103,13 @@ impl Renderer {
         let shader =
             device.create_shader_module(wgpu::include_wgsl!("../../assets/shaders/terrain.wgsl"));
 
-        let globals_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Globals Buffer"),
-            contents: bytemuck::cast_slice(&[Globals::default()]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let globals_buffer = Buffer::new(
+            &device,
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            &[Globals::default()],
+        );
 
-        let globals_bindgroup_layout =
+        let globals_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Globals Bind Group Layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -110,10 +124,71 @@ impl Renderer {
                 }],
             });
 
-        let render_pipeline_layout =
+       
+        let mut indices = Vec::new();
+        let mut vertices = Vec::new();
+        for n in 0..3 {
+            vertices.extend(cube_mesh(Vec3::new(0, 0, n)));
+        }
+        indices.extend(compute_mesh_indices_u16(vertices.len()));
+
+        let vertex_buffer = Buffer::new(&device, wgpu::BufferUsages::VERTEX, &vertices);
+        let index_buffer = Buffer::new(&device, wgpu::BufferUsages::INDEX, &indices);
+
+        let globals_bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Globals Bind Group"),
+            layout: &globals_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: globals_buffer.as_entire_binding(),
+            }],
+        });
+        let atlas = atlas::create_atlas("assets/textures/block", 16, 16);
+
+        let atlas_texture = texture::Texture::new(&device, &queue, image::DynamicImage::ImageRgba8(atlas));
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Texture Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Texture Bind Group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&atlas_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&atlas_texture.sampler),
+                },
+            ],
+        });
+
+         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&globals_bindgroup_layout],
+                bind_group_layouts: &[&globals_bind_group_layout, &texture_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -123,15 +198,7 @@ impl Renderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[VertexBufferLayout {
-                    array_stride: 3 * std::mem::size_of::<f32>() as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x3,
-                        offset: 0,
-                        shader_location: 0,
-                    }],
-                }],
+                buffers: &[TerrainVertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -139,7 +206,7 @@ impl Renderer {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
+                    write_mask: wgpu::ColorWrites::all(),
                 })],
             }),
             primitive: wgpu::PrimitiveState {
@@ -151,7 +218,13 @@ impl Renderer {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -159,22 +232,8 @@ impl Renderer {
             },
             multiview: None,
         });
-        let triangle_mesh: [[f32; 3]; 3] = [[0.0, 0.5, 0.0], [-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]];
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&triangle_mesh),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let globals_bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Globals Bind Group"),
-            layout: &globals_bindgroup_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: globals_buffer.as_entire_binding(),
-            }],
-        });
-
+        let depth_texture = Texture::depth(&device, config.width, config.height);
+        
         Ok(Self {
             surface,
             device,
@@ -182,23 +241,74 @@ impl Renderer {
             config,
             pipeline: render_pipeline,
             vertex_buffer,
+            index_buffer,
             globals_buffer,
-            globals_bindgroup,
+            globals_bind_group: globals_bindgroup,
+            texture_bind_group,
+            depth_texture,
         })
     }
 
     pub fn resize(&mut self, new_width: u32, new_height: u32) {
-        if new_width > 0 && new_height > 0 {
-            self.config.width = new_width;
-            self.config.height = new_height;
-            self.surface.configure(&self.device, &self.config);
+        if new_width == 0 || new_height == 0 {
+            // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
+            // Refer to: https://github.com/rust-windowing/winit/issues/208
+            // This solves an issue where the app would panic when minimizing on Windows.
+            return;
         }
+        self.config.width = new_width;
+        self.config.height = new_height;
+        self.depth_texture = Texture::depth(&self.device, new_width, new_height);
+        self.surface.configure(&self.device, &self.config);
     }
 
     pub fn write_globals(&mut self, globals: Globals) {
-        self.queue
-            .write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));
+        self.globals_buffer.write(&self.queue, &[globals]);
     }
+}
+
+#[allow(clippy::vec_init_then_push)]
+pub fn cube_mesh(offset: Vec3<i32>) -> Vec<TerrainVertex> {
+    let mut vertices = Vec::new();
+    let dirt = 0;
+    let grass_side = 1;
+    let grass_top = 2;
+    // north
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 0), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 0), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 0), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 0), grass_side));
+
+    // south
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 1), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 1), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 1), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 1), grass_side));
+
+    // east
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 0), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 1), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 1), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 0), grass_side));
+
+    // west
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 1), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 0), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 0), grass_side));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 1), grass_side));
+    // top
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 0), grass_top));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 0), grass_top));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 1), grass_top));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 1), grass_top));
+
+    // bottom
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 1), dirt));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 1), dirt));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 0), dirt));
+    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 0), dirt));
+
+    vertices
 }
 
 pub fn render_system(renderer: Read<Renderer, NoDefault>) -> SysResult {
@@ -218,21 +328,50 @@ pub fn render_system(renderer: Read<Renderer, NoDefault>) -> SysResult {
             view: &view,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 0.1,
+                    g: 0.2,
+                    b: 0.3,
+                    a: 1.0,
+                }),
                 store: wgpu::StoreOp::Store,
             },
         })],
-        depth_stencil_attachment: None,
+        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+            view: &renderer.depth_texture.view,
+            depth_ops:  Some(
+                wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }
+            ),
+            stencil_ops: None,
+        }),
         occlusion_query_set: None,
         timestamp_writes: None,
     });
     render_pass.set_pipeline(&renderer.pipeline);
-    render_pass.set_bind_group(0, &renderer.globals_bindgroup, &[]);
-    render_pass.set_vertex_buffer(0, renderer.vertex_buffer.slice(..));
-    render_pass.draw(0..3, 0..1);
+    render_pass.set_bind_group(0, &renderer.globals_bind_group, &[]);
+    render_pass.set_bind_group(1, &renderer.texture_bind_group, &[]);
+    render_pass.set_vertex_buffer(0, renderer.vertex_buffer.slice());
+    render_pass.set_index_buffer(renderer.index_buffer.slice(), wgpu::IndexFormat::Uint16);
+    render_pass.draw_indexed(0..renderer.index_buffer.len(), 0, 0..1);
+
     drop(render_pass);
     renderer.queue.submit(Some(encoder.finish()));
     output.present();
-
     Ok(ShouldContinue::Yes)
+}
+
+fn compute_mesh_indices_u16(vertex_count: usize) -> Vec<u16> {
+    assert!(vertex_count <= u16::MAX as usize);
+    let indices = [0, 1, 2, 2, 3, 0]
+        .iter()
+        .cycle()
+        .copied()
+        .take(vertex_count / 4 * 6)
+        .enumerate()
+        .map(|(i, j)| (i / 6 * 4 + j as usize) as u16)
+        .collect::<Vec<_>>();
+    indices
 }
