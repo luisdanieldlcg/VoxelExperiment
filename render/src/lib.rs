@@ -1,8 +1,9 @@
+pub mod atlas;
 pub mod buffer;
 pub mod error;
+pub mod mesh;
 pub mod texture;
 pub mod vertex;
-pub mod atlas;
 
 use buffer::Buffer;
 use common::{
@@ -10,11 +11,15 @@ use common::{
     state::SysResult,
 };
 use texture::Texture;
-use vek::{Mat4, Vec3};
+use vek::Mat4;
 use vertex::TerrainVertex;
 
-pub trait Vertex: Copy {
+pub struct TerrainBuffer(pub Option<Buffer<TerrainVertex>>);
+
+pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
+
+    const INDEX_BUFFER: Option<wgpu::IndexFormat>;
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
 
@@ -45,9 +50,8 @@ pub struct Renderer {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
-    vertex_buffer: Buffer<TerrainVertex>,
     globals_buffer: Buffer<Globals>,
-    index_buffer: Buffer<u16>,
+    terrain_index_buffer: Buffer<u32>,
     globals_bind_group: wgpu::BindGroup,
     texture_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
@@ -124,16 +128,7 @@ impl Renderer {
                 }],
             });
 
-       
-        let mut indices = Vec::new();
-        let mut vertices = Vec::new();
-        for n in 0..3 {
-            vertices.extend(cube_mesh(Vec3::new(0, 0, n)));
-        }
-        indices.extend(compute_mesh_indices_u16(vertices.len()));
-
-        let vertex_buffer = Buffer::new(&device, wgpu::BufferUsages::VERTEX, &vertices);
-        let index_buffer = Buffer::new(&device, wgpu::BufferUsages::INDEX, &indices);
+        let terrain_index_buffer = compute_terrain_indices(&device, 5000);
 
         let globals_bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Globals Bind Group"),
@@ -145,8 +140,8 @@ impl Renderer {
         });
         let atlas = atlas::create_atlas("assets/textures/block", 16, 16);
 
-        let atlas_texture = texture::Texture::new(&device, &queue, image::DynamicImage::ImageRgba8(atlas));
-
+        let atlas_texture =
+            texture::Texture::new(&device, &queue, image::DynamicImage::ImageRgba8(atlas));
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Texture Bind Group Layout"),
@@ -185,7 +180,7 @@ impl Renderer {
             ],
         });
 
-         let render_pipeline_layout =
+        let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[&globals_bind_group_layout, &texture_bind_group_layout],
@@ -233,15 +228,14 @@ impl Renderer {
             multiview: None,
         });
         let depth_texture = Texture::depth(&device, config.width, config.height);
-        
         Ok(Self {
             surface,
             device,
             queue,
             config,
             pipeline: render_pipeline,
-            vertex_buffer,
-            index_buffer,
+            // vertex_buffer,
+            terrain_index_buffer,
             globals_buffer,
             globals_bind_group: globals_bindgroup,
             texture_bind_group,
@@ -265,53 +259,44 @@ impl Renderer {
     pub fn write_globals(&mut self, globals: Globals) {
         self.globals_buffer.write(&self.queue, &[globals]);
     }
+
+    pub fn create_vertex_buffer<T: Vertex>(&mut self, data: &[T]) -> Buffer<T> {
+        self.check_index_buffer::<T>(data.len());
+        Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
+    }
+
+     pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
+        let l = len / 6 * 4;
+        match V::INDEX_BUFFER {
+            Some(wgpu::IndexFormat::Uint16) => {
+                // TODO: create u16 index buffer
+            }
+            Some(wgpu::IndexFormat::Uint32) => {
+                if self.terrain_index_buffer.len() > l as u32 {
+                    return;
+                }
+                if len > u32::MAX as usize {
+                    panic!(
+                        "Too many vertices for {} using u32 index buffer. Count: {}",
+                        core::any::type_name::<V>(),
+                        len
+                    );
+                }
+                log::info!(
+                    "Recreating index buffer for {}, with {} vertices",
+                    core::any::type_name::<V>(),
+                    len
+                );
+                self.terrain_index_buffer = compute_terrain_indices(&self.device, len);
+            }
+
+            None => (),
+        }
+    }
 }
 
-#[allow(clippy::vec_init_then_push)]
-pub fn cube_mesh(offset: Vec3<i32>) -> Vec<TerrainVertex> {
-    let mut vertices = Vec::new();
-    let dirt = 0;
-    let grass_side = 1;
-    let grass_top = 2;
-    // north
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 0), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 0), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 0), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 0), grass_side));
 
-    // south
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 1), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 1), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 1), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 1), grass_side));
-
-    // east
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 0), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 1), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 1), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 0), grass_side));
-
-    // west
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 1), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 0), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 0), grass_side));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 1), grass_side));
-    // top
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 0), grass_top));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 0), grass_top));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 1, 1), grass_top));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 1, 1), grass_top));
-
-    // bottom
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 1), dirt));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 1), dirt));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(1, 0, 0), dirt));
-    vertices.push(TerrainVertex::new(offset + Vec3::new(0, 0, 0), dirt));
-
-    vertices
-}
-
-pub fn render_system(renderer: Read<Renderer, NoDefault>) -> SysResult {
+pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Read<TerrainBuffer, NoDefault>)) -> SysResult {
     let output = renderer.surface.get_current_texture()?;
     let view = output
         .texture
@@ -339,12 +324,10 @@ pub fn render_system(renderer: Read<Renderer, NoDefault>) -> SysResult {
         })],
         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
             view: &renderer.depth_texture.view,
-            depth_ops:  Some(
-                wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: wgpu::StoreOp::Store,
-                }
-            ),
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: wgpu::StoreOp::Store,
+            }),
             stencil_ops: None,
         }),
         occlusion_query_set: None,
@@ -353,9 +336,11 @@ pub fn render_system(renderer: Read<Renderer, NoDefault>) -> SysResult {
     render_pass.set_pipeline(&renderer.pipeline);
     render_pass.set_bind_group(0, &renderer.globals_bind_group, &[]);
     render_pass.set_bind_group(1, &renderer.texture_bind_group, &[]);
-    render_pass.set_vertex_buffer(0, renderer.vertex_buffer.slice());
-    render_pass.set_index_buffer(renderer.index_buffer.slice(), wgpu::IndexFormat::Uint16);
-    render_pass.draw_indexed(0..renderer.index_buffer.len(), 0, 0..1);
+    if let Some(buffer) = &terrain_buffer.0 {
+        render_pass.set_vertex_buffer(0, buffer.slice());
+    }
+    render_pass.set_index_buffer(renderer.terrain_index_buffer.slice(), wgpu::IndexFormat::Uint32);
+    render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
 
     drop(render_pass);
     renderer.queue.submit(Some(encoder.finish()));
@@ -363,15 +348,18 @@ pub fn render_system(renderer: Read<Renderer, NoDefault>) -> SysResult {
     Ok(ShouldContinue::Yes)
 }
 
-fn compute_mesh_indices_u16(vertex_count: usize) -> Vec<u16> {
-    assert!(vertex_count <= u16::MAX as usize);
+
+fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<u32> {
+    assert!(vert_length <= u32::MAX as usize);
     let indices = [0, 1, 2, 2, 3, 0]
         .iter()
         .cycle()
         .copied()
-        .take(vertex_count / 4 * 6)
+        .take(vert_length / 4 * 6)
         .enumerate()
-        .map(|(i, j)| (i / 6 * 4 + j as usize) as u16)
+        .map(|(i, b)| (i / 6 * 4 + b) as u32)
         .collect::<Vec<_>>();
-    indices
+
+    Buffer::new(device, wgpu::BufferUsages::INDEX, &indices)
 }
+

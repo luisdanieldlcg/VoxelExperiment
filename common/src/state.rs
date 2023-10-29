@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::resources::DeltaTime;
+use crate::resources::{DeltaTime, TerrainMap};
 
 pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;
 
@@ -14,6 +14,7 @@ impl State {
         let world = apecs::World::default();
         let mut this = Self { world };
         this.add_resource(DeltaTime::default());
+        this.add_resource(TerrainMap::default());
         this
     }
 

@@ -5,6 +5,7 @@ pub mod error;
 pub mod event;
 pub mod input;
 pub mod run;
+pub mod terrain;
 pub mod window;
 
 pub struct App {

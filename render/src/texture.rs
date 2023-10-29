@@ -1,5 +1,3 @@
-use vek::Vec2;
-
 pub struct Texture {
     pub(crate) handle: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
@@ -7,22 +5,22 @@ pub struct Texture {
 }
 
 impl Texture {
-   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: image::DynamicImage) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: image::DynamicImage) -> Self {
         // Handle errors for unsupported image formats
         match image {
             image::DynamicImage::ImageLumaA8(_) => {
                 panic!("Image format not supported: ImageLumaA8")
-            }
+            },
             image::DynamicImage::ImageLuma16(_) => {
                 panic!("Image format not supported: ImageLuma16")
-            }
+            },
             image::DynamicImage::ImageLumaA16(_) => {
                 panic!("Image format not supported: ImageLumaA16")
-            }
+            },
             image::DynamicImage::ImageRgb16(_) => panic!("Image format not supported: ImageRgb16"),
             image::DynamicImage::ImageRgba16(_) => {
                 panic!("Image format not supported: ImageRgba16")
-            }
+            },
             _ => (),
         };
 

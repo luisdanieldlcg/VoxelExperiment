@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 apecs = "0.7.0"
 log = { workspace = true }
+vek = { workspace = true }
