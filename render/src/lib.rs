@@ -2,19 +2,22 @@ pub mod atlas;
 pub mod buffer;
 pub mod error;
 pub mod mesh;
+pub mod pipeline;
 pub mod texture;
 pub mod vertex;
 
 use buffer::Buffer;
-use common::{
-    ecs::{NoDefault, Read, ShouldContinue},
-    state::SysResult,
-};
+use common::state::SysResult;
+use pipeline::TerrainPipeline;
 use texture::Texture;
 use vek::Mat4;
 use vertex::TerrainVertex;
 
-pub struct TerrainBuffer(pub Option<Buffer<TerrainVertex>>);
+#[derive(Default)]
+pub struct TerrainData {
+    pub buffer: Option<Buffer<TerrainVertex>>,
+    pub show_wireframe: bool,
+}
 
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
@@ -44,12 +47,17 @@ impl Default for Globals {
     }
 }
 
+pub struct Pipelines {
+    pub terrain: TerrainPipeline,
+    pub terrain_wireframe: TerrainPipeline,
+}
+
 pub struct Renderer {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    pipeline: wgpu::RenderPipeline,
+    pipelines: Pipelines,
     globals_buffer: Buffer<Globals>,
     terrain_index_buffer: Buffer<u32>,
     globals_bind_group: wgpu::BindGroup,
@@ -76,7 +84,7 @@ impl Renderer {
 
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::POLYGON_MODE_LINE,
                 limits: wgpu::Limits::default(),
                 label: None,
             },
@@ -179,62 +187,34 @@ impl Renderer {
                 },
             ],
         });
+        let terrain_pipeline = TerrainPipeline::new(
+            &device,
+            &config,
+            &shader,
+            &[&globals_bind_group_layout, &texture_bind_group_layout],
+            false,
+        );
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&globals_bind_group_layout, &texture_bind_group_layout],
-                push_constant_ranges: &[],
-            });
+        let terrain_wireframe_pipeline = TerrainPipeline::new(
+            &device,
+            &config,
+            &shader,
+            &[&globals_bind_group_layout, &texture_bind_group_layout],
+            true,
+        );
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
-            layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[TerrainVertex::desc()],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::all(),
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
+        let pipelines = Pipelines {
+            terrain: terrain_pipeline,
+            terrain_wireframe: terrain_wireframe_pipeline,
+        };
+
         let depth_texture = Texture::depth(&device, config.width, config.height);
         Ok(Self {
             surface,
             device,
             queue,
             config,
-            pipeline: render_pipeline,
-            // vertex_buffer,
+            pipelines,
             terrain_index_buffer,
             globals_buffer,
             globals_bind_group: globals_bindgroup,
@@ -265,12 +245,12 @@ impl Renderer {
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
     }
 
-     pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
+    pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
         let l = len / 6 * 4;
         match V::INDEX_BUFFER {
             Some(wgpu::IndexFormat::Uint16) => {
                 // TODO: create u16 index buffer
-            }
+            },
             Some(wgpu::IndexFormat::Uint32) => {
                 if self.terrain_index_buffer.len() > l as u32 {
                     return;
@@ -288,15 +268,17 @@ impl Renderer {
                     len
                 );
                 self.terrain_index_buffer = compute_terrain_indices(&self.device, len);
-            }
+            },
 
             None => (),
         }
     }
 }
 
-
-pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Read<TerrainBuffer, NoDefault>)) -> SysResult {
+use apecs::*;
+pub fn render_system(
+    (renderer, terrain_data): (Read<Renderer, NoDefault>, Read<TerrainData, NoDefault>),
+) -> SysResult {
     let output = renderer.surface.get_current_texture()?;
     let view = output
         .texture
@@ -333,13 +315,25 @@ pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Rea
         occlusion_query_set: None,
         timestamp_writes: None,
     });
-    render_pass.set_pipeline(&renderer.pipeline);
+
+    if terrain_data.show_wireframe {
+        render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.handle);
+    } else {
+        render_pass.set_pipeline(&renderer.pipelines.terrain.handle);
+    }
+
     render_pass.set_bind_group(0, &renderer.globals_bind_group, &[]);
     render_pass.set_bind_group(1, &renderer.texture_bind_group, &[]);
-    if let Some(buffer) = &terrain_buffer.0 {
+
+    if let Some(buffer) = &terrain_data.buffer {
         render_pass.set_vertex_buffer(0, buffer.slice());
     }
-    render_pass.set_index_buffer(renderer.terrain_index_buffer.slice(), wgpu::IndexFormat::Uint32);
+
+    render_pass.set_index_buffer(
+        renderer.terrain_index_buffer.slice(),
+        wgpu::IndexFormat::Uint32,
+    );
+
     render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
 
     drop(render_pass);
@@ -347,7 +341,6 @@ pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Rea
     output.present();
     Ok(ShouldContinue::Yes)
 }
-
 
 fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<u32> {
     assert!(vert_length <= u32::MAX as usize);
@@ -362,4 +355,3 @@ fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<
 
     Buffer::new(device, wgpu::BufferUsages::INDEX, &indices)
 }
-

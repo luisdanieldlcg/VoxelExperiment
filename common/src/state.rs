@@ -10,37 +10,18 @@ pub struct State {
 
 #[allow(clippy::new_without_default)]
 impl State {
-    pub fn new() -> Self {
-        let world = apecs::World::default();
-        let mut this = Self { world };
-        this.add_resource(DeltaTime::default());
-        this.add_resource(TerrainMap::default());
-        this
+    pub fn new() -> apecs::anyhow::Result<Self> {
+        let mut world = apecs::World::default();
+        world.with_default_resource::<DeltaTime>()?;
+        world.with_default_resource::<TerrainMap>()?;
+        apecs::anyhow::Result::Ok(Self { world })
     }
 
     pub fn tick(&mut self, dt: Duration) {
         self.resource_mut::<DeltaTime>().0 = dt.as_secs_f32();
         if let Err(e) = self.world.tick() {
-            log::error!("{}", e);
+            log::error!("failed to tick ecs: {:?}", e);
         }
-    }
-
-    pub fn add_system<T, F>(&mut self, name: impl AsRef<str>, sys_fn: F)
-    where
-        F: FnMut(T) -> SysResult + Send + Sync + 'static,
-        T: apecs::CanFetch + 'static,
-    {
-        self.world.with_system::<T, F>(name, sys_fn).expect(
-            "Resources used by this system are not available\"
-            This is a bug in the code",
-        );
-    }
-
-    pub fn add_resource<R: apecs::IsResource>(&mut self, resource: R) {
-        self.world.with_resource::<R>(resource).expect(
-            "Tried to add a resource that already exists. \
-            This is a bug in the code",
-        );
     }
 
     pub fn resource<R: apecs::IsResource>(&self) -> &R {
@@ -55,7 +36,21 @@ impl State {
             .expect("Tried to fetch an invalid resource")
     }
 
+    pub fn fetch<T: apecs::CanFetch>(&mut self) -> T {
+        self.world
+            .fetch::<T>()
+            .expect("Failed to fetch resource. This is most likely a bug")
+    }
+
     pub fn query<Q: apecs::IsQuery + 'static>(&mut self) -> apecs::QueryGuard<'_, Q> {
         self.world.query::<Q>()
+    }
+
+    pub fn ecs_mut(&mut self) -> &mut apecs::World {
+        &mut self.world
+    }
+
+    pub fn ecs(&self) -> &apecs::World {
+        &self.world
     }
 }

@@ -1,13 +1,13 @@
-use common::{
-    ecs::{NoDefault, Query, Read, ShouldContinue, Write},
-    resources::DeltaTime,
-    state::SysResult, chunk::Chunk,
-};
+use common::{chunk::Chunk, resources::DeltaTime, state::SysResult};
 
+use log::debug;
 use render::{Globals, Renderer};
 use vek::{Mat4, Vec2, Vec3};
 
-use crate::input::Input;
+use crate::{
+    event::{Events, GameInputEvent},
+    input::Input,
+};
 
 const Z_NEAR: f32 = 0.1;
 const Z_FAR: f32 = 1000.0;
@@ -77,45 +77,66 @@ impl Camera {
     }
 }
 
-pub fn camera_system(
-    (mut renderer, cameras, delta, input): (
-        Write<Renderer, NoDefault>,
-        Query<&mut Camera>,
-        Read<DeltaTime>,
-        Read<Input>,
-    ),
-) -> SysResult {
-    let mut cameras = cameras.query();
+use apecs::*;
+
+#[derive(CanFetch)]
+pub struct CameraTickSystem<'a> {
+    input: Read<Input>,
+    delta: Read<DeltaTime>,
+    cameras: Query<&'a mut Camera>,
+    renderer: Write<Renderer, NoDefault>,
+    game_events: Read<Events<GameInputEvent>>,
+}
+
+pub fn camera_update_system(mut system: CameraTickSystem) -> SysResult {
+    let mut cameras = system.cameras.query();
+    let delta = system.delta;
+
+    let mut x = 0.0;
+    let mut y = 0.0;
+    let mut z = 0.0;
+
+    if system.input.is_key_down(winit::keyboard::KeyCode::KeyW) {
+        z += 1.0;
+    }
+    if system.input.is_key_down(winit::keyboard::KeyCode::KeyS) {
+        z -= 1.0;
+    }
+    if system.input.is_key_down(winit::keyboard::KeyCode::KeyA) {
+        x -= 1.0;
+    }
+    if system.input.is_key_down(winit::keyboard::KeyCode::KeyD) {
+        x += 1.0;
+    }
+    if system.input.is_key_down(winit::keyboard::KeyCode::Space) {
+        y += 1.0;
+    }
+    if system
+        .input
+        .is_key_down(winit::keyboard::KeyCode::ShiftLeft)
+    {
+        y -= 1.0;
+    }
+
+    // for event in &system.game_events.events {
+    //     match event {
+    //         GameInputEvent::MoveForward => z += 1.0,
+    //         GameInputEvent::MoveBackward => z -= 1.0,
+    //         GameInputEvent::MoveLeft => x -= 1.0,
+    //         GameInputEvent::MoveRight => x += 1.0,
+    //         GameInputEvent::Jump => y += 1.0,
+    //         GameInputEvent::Sneak => y -= 1.0,
+    //         _ => (),
+    //     }
+    // }
+
     for camera in cameras.iter_mut() {
-        let mut x = 0.0;
-        let mut y = 0.0;
-        let mut z = 0.0;
-
-        if input.is_key_down(winit::keyboard::KeyCode::KeyW) {
-            z += 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::KeyS) {
-            z -= 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::KeyA) {
-            x -= 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::KeyD) {
-            x += 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::Space) {
-            y += 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::ShiftLeft) {
-            y -= 1.0;
-        }
-
         let forward = camera.forward();
         let right = camera.right();
 
         let dir = Vec3::new(x, y, z);
 
-        let speed = 2.0;
+        let speed = 24.0;
         let dx = right * -dir.x * speed * delta.0;
         let dy = Vec3::unit_y() * dir.y * speed * delta.0;
         let dz = forward * dir.z * speed * delta.0;
@@ -123,7 +144,7 @@ pub fn camera_system(
 
         let matrices = camera.build_matrices();
         let globals = Globals::new(matrices.view, matrices.proj);
-        renderer.write_globals(globals);
+        system.renderer.write_globals(globals);
     }
     Ok(ShouldContinue::Yes)
 }

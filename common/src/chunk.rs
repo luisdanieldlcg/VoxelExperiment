@@ -9,6 +9,12 @@ pub struct Chunk {
 impl Chunk {
     pub const SIZE: Vec3<usize> = Vec3::new(16, 256, 16);
 
+    pub fn flat() -> Self {
+        Self {
+            blocks: vec![BlockId::Air; Self::SIZE.product()],
+        }
+    }
+
     pub fn generate(_: Vec2<i32>) -> Self {
         let mut blocks = vec![BlockId::Air; Self::SIZE.product()];
         for x in 0..Self::SIZE.x {
@@ -26,6 +32,10 @@ impl Chunk {
         Self { blocks }
     }
 
+    pub fn get(&self, pos: Vec3<i32>) -> Option<BlockId> {
+        Self::index_of(pos).map(|idx| self.blocks[idx])
+    }
+
     pub fn index_of(pos: Vec3<i32>) -> Option<usize> {
         if pos.is_any_negative() {
             return None;
@@ -39,13 +49,15 @@ impl Chunk {
         }
     }
 
-    pub fn is_within_bounds(pos: Vec3<i32>) -> bool {
-        pos.x >= 0
-            && pos.x < Self::SIZE.x as i32
-            && pos.y >= 0
-            && pos.y < Self::SIZE.y as i32
-            && pos.z >= 0
-            && pos.z < Self::SIZE.z as i32
+    pub fn out_of_bounds(pos: Vec3<i32>) -> bool {
+        pos.is_any_negative()
+            || pos.x >= Self::SIZE.x as i32
+            || pos.y >= Self::SIZE.y as i32
+            || pos.z >= Self::SIZE.z as i32
+    }
+
+    pub fn within_bounds(pos: Vec3<i32>) -> bool {
+        !Self::out_of_bounds(pos)
     }
 
     pub fn iter(&self) -> ChunkIter {
@@ -74,5 +86,34 @@ impl Iterator for ChunkIter {
 
         self.index += 1;
         Some(Vec3::new(x, y, z).map(|f| f as i32))
+    }
+}
+#[cfg(test)]
+mod tests {
+    use vek::Vec3;
+
+    use crate::chunk::Chunk;
+
+    #[test]
+    pub fn chunk_iter_works() {
+        let chunk = Chunk::flat();
+        let mut count = 0;
+
+        for pos in chunk.iter() {
+            assert!(Chunk::within_bounds(pos));
+            count += 1;
+        }
+
+        assert_eq!(count, 16 * 256 * 16);
+    }
+    #[test]
+    pub fn is_chunk_pos_out_of_bounds() {
+        assert!(Chunk::out_of_bounds(Vec3::new(-1, 0, 0)));
+        assert!(Chunk::out_of_bounds(Vec3::new(0, -1, 0)));
+        assert!(Chunk::out_of_bounds(Vec3::new(0, 0, -1)));
+        assert!(Chunk::out_of_bounds(Vec3::new(16, 0, 0)));
+        assert!(Chunk::out_of_bounds(Vec3::new(0, 256, 0)));
+        assert!(Chunk::out_of_bounds(Vec3::new(0, 0, 16)));
+        assert!(!Chunk::out_of_bounds(Vec3::new(15, 255, 15)));
     }
 }

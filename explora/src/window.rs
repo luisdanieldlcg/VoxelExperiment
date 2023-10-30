@@ -1,10 +1,17 @@
-use crate::{camera::Camera, error::Error, event::Events, input::Input};
+use crate::{
+    camera::Camera,
+    error::Error,
+    event::{Events, GameInputEvent},
+    input::Input,
+};
 
 use common::{
     ecs::{NoDefault, Query, Read, ShouldContinue, Write},
     resources::DeltaTime,
     state::SysResult,
 };
+
+use log::{debug, info};
 use render::Renderer;
 use winit::event_loop::EventLoop;
 
@@ -42,26 +49,32 @@ impl Window {
     }
 }
 
-#[allow(clippy::type_complexity)]
-pub fn window_event_system(
-    (mut events, mut input, mut renderer, camera, delta_time): (
-        Write<Events<WindowEvent>>,
-        Write<Input>,
-        Write<Renderer, NoDefault>,
-        Query<&mut Camera>,
-        Read<DeltaTime>,
-    ),
-) -> SysResult {
-    for event in &events.events {
+use apecs::*;
+
+#[derive(CanFetch)]
+pub struct WindowEventSystem<'a> {
+    window_events: Write<Events<WindowEvent>>,
+    input_events: Write<Events<GameInputEvent>>,
+    input: Write<Input>,
+    renderer: Write<Renderer, NoDefault>,
+    camera: Query<&'a mut Camera>,
+    delta_time: Read<DeltaTime>,
+}
+
+pub fn window_event_system(mut system: WindowEventSystem) -> SysResult {
+    for event in &system.window_events.events {
         match event {
             WindowEvent::Resize(size) => {
-                renderer.resize(size.x, size.y);
-                for camera in camera.query().iter_mut() {
+                system.renderer.resize(size.x, size.y);
+                for camera in system.camera.query().iter_mut() {
                     camera.set_aspect_ratio(size.x as f32 / size.y as f32);
                 }
             },
             WindowEvent::KeyPress(key, pressed) => {
-                input.keys[*key as usize] = *pressed;
+                if let Some(game_input_event) = Input::map_game_input(*key) {
+                    system.input_events.push(game_input_event);
+                }
+                system.input.keys[*key as usize] = *pressed;
             },
             WindowEvent::ButtonPress(button, pressed) => {
                 let code = match button {
@@ -72,18 +85,17 @@ pub fn window_event_system(
                     winit::event::MouseButton::Forward => 4,
                     winit::event::MouseButton::Other(code) => *code as usize,
                 };
-                input.buttons[code] = *pressed;
+                system.input.buttons[code] = *pressed;
             },
 
             WindowEvent::CursorMove(delta) => {
-                input.cursor_delta = *delta;
-                for camera in camera.query().iter_mut() {
-                    camera.rotate(delta.x, delta.y, delta_time.0);
+                system.input.cursor_delta = *delta;
+                for camera in system.camera.query().iter_mut() {
+                    camera.rotate(delta.x, delta.y, system.delta_time.0);
                 }
             },
             _ => {},
         }
     }
-    events.clear();
-    Ok(ShouldContinue::Yes)
+    ok()
 }

@@ -14,3 +14,4 @@ members = [
 [workspace.dependencies]
 log = "0.4.20"
 vek = "0.16.1"
+apecs = "0.7.0"
