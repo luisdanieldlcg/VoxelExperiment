@@ -1,9 +1,4 @@
-use common::{
-    chunk::Chunk,
-    ecs::{NoDefault, Query, Read, ShouldContinue, Write},
-    resources::DeltaTime,
-    state::SysResult,
-};
+use common::{chunk::Chunk, resources::DeltaTime, state::SysResult};
 
 use render::{Globals, Renderer};
 use vek::{Mat4, Vec2, Vec3};
@@ -78,19 +73,24 @@ impl Camera {
     }
 }
 
-pub fn camera_system(
-    (mut renderer, cameras, delta, input): (
-        Write<Renderer, NoDefault>,
-        Query<&mut Camera>,
-        Read<DeltaTime>,
-        Read<Input>,
-    ),
-) -> SysResult {
-    let mut cameras = cameras.query();
+use apecs::*;
+
+#[derive(CanFetch)]
+pub struct CameraSystem<'a> {
+    renderer: Write<Renderer, NoDefault>,
+    cameras: Query<&'a mut Camera>,
+    delta: Read<DeltaTime>,
+    input: Read<Input>,
+}
+
+pub fn camera_system(mut sys: CameraSystem) -> SysResult {
+    let mut cameras = sys.cameras.query();
     for camera in cameras.iter_mut() {
         let mut x = 0.0;
         let mut y = 0.0;
         let mut z = 0.0;
+
+        let input = &sys.input;
 
         if input.is_key_down(winit::keyboard::KeyCode::KeyW) {
             z += 1.0;
@@ -115,16 +115,16 @@ pub fn camera_system(
         let right = camera.right();
 
         let dir = Vec3::new(x, y, z);
-
+        let delta = sys.delta.0;
         let speed = 2.0;
-        let dx = right * -dir.x * speed * delta.0;
-        let dy = Vec3::unit_y() * dir.y * speed * delta.0;
-        let dz = forward * dir.z * speed * delta.0;
+        let dx = right * -dir.x * speed * delta;
+        let dy = Vec3::unit_y() * dir.y * speed * delta;
+        let dz = forward * dir.z * speed * delta;
         camera.pos += dx + dy + dz;
 
         let matrices = camera.build_matrices();
         let globals = Globals::new(matrices.view, matrices.proj);
-        renderer.write_globals(globals);
+        sys.renderer.write_globals(globals);
     }
-    Ok(ShouldContinue::Yes)
+    ok()
 }

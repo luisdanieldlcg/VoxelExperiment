@@ -10,5 +10,6 @@ render = { path = "../render", package = "explora_render" }
 common = { path = "../common", package = "explora_common" }
 log = { workspace = true }
 vek = { workspace = true }
+apecs = { workspace = true }
 env_logger = "0.10.0"
 winit = "0.29.2"

@@ -1,23 +1,20 @@
-use common::{
-    chunk::Chunk,
-    ecs::{end, ok, NoDefault, Write},
-    resources::TerrainMap,
-    state::SysResult,
-};
+use common::{chunk::Chunk, resources::TerrainMap, state::SysResult};
 use render::{Renderer, TerrainBuffer};
 use vek::Vec2;
 
-#[allow(clippy::type_complexity)]
-pub fn terrain_system_setup(
-    (mut renderer, mut terrain, mut terrain_buffer): (
-        Write<Renderer, NoDefault>,
-        Write<TerrainMap>,
-        Write<TerrainBuffer, NoDefault>,
-    ),
-) -> SysResult {
+use apecs::*;
+
+#[derive(CanFetch)]
+pub struct TerrainSystem {
+    renderer: Write<Renderer, NoDefault>,
+    terrain: Write<TerrainMap>,
+    terrain_buffer: Write<TerrainBuffer, NoDefault>,
+}
+
+pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
     let chunk = Chunk::generate(Vec2::zero());
     let mesh = render::mesh::create_chunk_mesh(&chunk);
-    terrain.0.insert(Vec2::zero(), chunk);
-    *terrain_buffer = TerrainBuffer(Some(renderer.create_vertex_buffer(&mesh)));
+    system.terrain.0.insert(Vec2::zero(), chunk);
+    *system.terrain_buffer = TerrainBuffer(Some(system.renderer.create_vertex_buffer(&mesh)));
     end()
 }

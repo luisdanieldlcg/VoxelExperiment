@@ -6,14 +6,12 @@ pub mod texture;
 pub mod vertex;
 
 use buffer::Buffer;
-use common::{
-    ecs::{NoDefault, Read, ShouldContinue},
-    state::SysResult,
-};
+use common::state::SysResult;
 use texture::Texture;
 use vek::Mat4;
 use vertex::TerrainVertex;
 
+#[derive(Default)]
 pub struct TerrainBuffer(pub Option<Buffer<TerrainVertex>>);
 
 pub trait Vertex: bytemuck::Pod {
@@ -295,6 +293,7 @@ impl Renderer {
     }
 }
 
+use apecs::*;
 pub fn render_system(
     (renderer, terrain_buffer): (Read<Renderer, NoDefault>, Read<TerrainBuffer, NoDefault>),
 ) -> SysResult {
