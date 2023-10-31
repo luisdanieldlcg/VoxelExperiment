@@ -1,10 +1,10 @@
 use common::{
     chunk::Chunk,
-    ecs::{ok, NoDefault, Write, end},
+    ecs::{end, ok, NoDefault, Write},
     resources::TerrainMap,
     state::SysResult,
 };
-use render::{ Renderer, TerrainBuffer};
+use render::{Renderer, TerrainBuffer};
 use vek::Vec2;
 
 #[allow(clippy::type_complexity)]

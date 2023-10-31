@@ -4,7 +4,7 @@ use common::{
     state::{State, SysResult},
 };
 use explora::{camera::Camera, event::Events, input::Input, window::Window, App};
-use render::{Renderer, buffer::Buffer, vertex::TerrainVertex, TerrainBuffer};
+use render::{buffer::Buffer, vertex::TerrainVertex, Renderer, TerrainBuffer};
 use winit::event::WindowEvent;
 
 fn main() {
@@ -33,7 +33,10 @@ fn main() {
     state.add_system("window_event_system", explora::window::window_event_system);
     state.add_system("render_system", render::render_system);
     state.add_system("camera_system", explora::camera::camera_system);
-    state.add_system("terrain_system_setup", explora::terrain::terrain_system_setup);
+    state.add_system(
+        "terrain_system_setup",
+        explora::terrain::terrain_system_setup,
+    );
 
     let clock = Clock::default();
     let app = App {

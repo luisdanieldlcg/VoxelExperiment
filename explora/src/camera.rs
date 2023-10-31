@@ -1,7 +1,8 @@
 use common::{
+    chunk::Chunk,
     ecs::{NoDefault, Query, Read, ShouldContinue, Write},
     resources::DeltaTime,
-    state::SysResult, chunk::Chunk,
+    state::SysResult,
 };
 
 use render::{Globals, Renderer};

@@ -265,12 +265,12 @@ impl Renderer {
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
     }
 
-     pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
+    pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
         let l = len / 6 * 4;
         match V::INDEX_BUFFER {
             Some(wgpu::IndexFormat::Uint16) => {
                 // TODO: create u16 index buffer
-            }
+            },
             Some(wgpu::IndexFormat::Uint32) => {
                 if self.terrain_index_buffer.len() > l as u32 {
                     return;
@@ -288,15 +288,16 @@ impl Renderer {
                     len
                 );
                 self.terrain_index_buffer = compute_terrain_indices(&self.device, len);
-            }
+            },
 
             None => (),
         }
     }
 }
 
-
-pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Read<TerrainBuffer, NoDefault>)) -> SysResult {
+pub fn render_system(
+    (renderer, terrain_buffer): (Read<Renderer, NoDefault>, Read<TerrainBuffer, NoDefault>),
+) -> SysResult {
     let output = renderer.surface.get_current_texture()?;
     let view = output
         .texture
@@ -339,7 +340,10 @@ pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Rea
     if let Some(buffer) = &terrain_buffer.0 {
         render_pass.set_vertex_buffer(0, buffer.slice());
     }
-    render_pass.set_index_buffer(renderer.terrain_index_buffer.slice(), wgpu::IndexFormat::Uint32);
+    render_pass.set_index_buffer(
+        renderer.terrain_index_buffer.slice(),
+        wgpu::IndexFormat::Uint32,
+    );
     render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
 
     drop(render_pass);
@@ -347,7 +351,6 @@ pub fn render_system((renderer, terrain_buffer): (Read<Renderer, NoDefault>, Rea
     output.present();
     Ok(ShouldContinue::Yes)
 }
-
 
 fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<u32> {
     assert!(vert_length <= u32::MAX as usize);
@@ -362,4 +365,3 @@ fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<
 
     Buffer::new(device, wgpu::BufferUsages::INDEX, &indices)
 }
-

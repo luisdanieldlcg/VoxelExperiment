@@ -3,7 +3,7 @@ use crate::{event::Events, input::Input, App};
 use log::info;
 use vek::Vec2;
 use winit::{
-    event::{DeviceEvent, ElementState, Event},
+    event::ElementState,
     event_loop::{ControlFlow, EventLoop},
     keyboard::PhysicalKey,
 };
@@ -15,10 +15,15 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
         .run(move |event, elwt| {
             let events = app.state.resource_mut::<Events<WindowEvent>>();
             match event {
-                Event::WindowEvent { event, window_id }
+                winit::event::Event::AboutToWait => app.window.platform().request_redraw(),
+                winit::event::Event::WindowEvent { event, window_id }
                     if window_id == app.window.platform().id() =>
                 {
                     match event {
+                        winit::event::WindowEvent::RedrawRequested => {
+                            app.state.tick(app.clock.dt());
+                            app.clock.tick();
+                        },
                         winit::event::WindowEvent::CloseRequested => elwt.exit(),
                         winit::event::WindowEvent::Resized(size) => {
                             let new_size = Vec2::new(size.width, size.height);
@@ -47,7 +52,7 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
                     }
                 },
                 winit::event::Event::DeviceEvent {
-                    event: DeviceEvent::MouseMotion { delta },
+                    event: winit::event::DeviceEvent::MouseMotion { delta },
                     ..
                 } => {
                     let delta = Vec2::new(delta.0 as f32, delta.1 as f32);
@@ -55,9 +60,6 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
                 },
                 _ => (),
             }
-
-            app.state.tick(app.clock.dt());
-            app.clock.tick();
 
             let input = app.state.resource::<Input>();
             if input.is_key_down(winit::keyboard::KeyCode::Escape) {
