@@ -17,8 +17,9 @@ impl TerrainVertex {
 }
 
 impl Vertex for TerrainVertex {
-    const INDEX_BUFFER: Option<wgpu::IndexFormat> = Some(wgpu::IndexFormat::Uint32);
 
+    const INDEX_BUFFER: Option<wgpu::IndexFormat> = Some(wgpu::IndexFormat::Uint32);
+    
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         const ATTRS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
             0 => Float32x3,
@@ -30,4 +31,5 @@ impl Vertex for TerrainVertex {
             attributes: &ATTRS,
         }
     }
+
 }

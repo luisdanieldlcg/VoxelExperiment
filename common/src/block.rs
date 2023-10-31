@@ -11,8 +11,4 @@ impl BlockId {
             BlockId::Dirt => true,
         }
     }
-
-    pub fn is_air(&self) -> bool {
-        matches!(self, BlockId::Air)
-    }
 }

@@ -9,17 +9,6 @@ pub enum WindowEvent {
     ButtonPress(winit::event::MouseButton, bool),
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum GameInputEvent {
-    MoveForward,
-    MoveBackward,
-    MoveLeft,
-    MoveRight,
-    Jump,
-    Sneak,
-    ToggleWireframe,
-}
-
 pub struct Events<T> {
     pub events: Vec<T>,
 }
