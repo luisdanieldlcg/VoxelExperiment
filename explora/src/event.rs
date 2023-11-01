@@ -1,12 +1,18 @@
 use vek::Vec2;
 
+use crate::input::GameInput;
+
+/// Represents the various window events that are relevant for the game.
 #[derive(Debug, Clone, Copy)]
 pub enum WindowEvent {
+    /// The window has been requested to close.
     Close,
+    /// The window has been resized.
     Resize(Vec2<u32>),
+    /// The cursor has been moved.
     CursorMove(Vec2<f32>),
-    KeyPress(winit::keyboard::KeyCode, bool),
-    ButtonPress(winit::event::MouseButton, bool),
+    /// A game key has been pressed or released.
+    Input(GameInput, bool),
 }
 
 pub struct Events<T> {
@@ -14,7 +20,7 @@ pub struct Events<T> {
 }
 
 impl<T> Events<T> {
-    pub fn push(&mut self, event: T) {
+    pub fn send(&mut self, event: T) {
         self.events.push(event);
     }
 

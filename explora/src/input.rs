@@ -1,5 +1,16 @@
 use vek::Vec2;
 
+#[derive(Debug, Clone, Copy)]
+pub enum GameInput {
+    MoveForward,
+    MoveBackward,
+    MoveLeft,
+    MoveRight,
+    Jump,
+    Sneak,
+    ToggleWireframeView,
+}
+
 /// Input struct that holds the state of the keyboard and mouse.
 pub struct Input {
     pub keys: [bool; 256],
@@ -35,5 +46,19 @@ impl Input {
 
     pub fn cursor_delta(&self) -> Vec2<f32> {
         self.cursor_delta
+    }
+
+    pub fn map_game_input(key: winit::keyboard::KeyCode) -> Option<GameInput> {
+        let input = match key {
+            winit::keyboard::KeyCode::KeyW => GameInput::MoveForward,
+            winit::keyboard::KeyCode::KeyS => GameInput::MoveBackward,
+            winit::keyboard::KeyCode::KeyA => GameInput::MoveLeft,
+            winit::keyboard::KeyCode::KeyD => GameInput::MoveRight,
+            winit::keyboard::KeyCode::Space => GameInput::Jump,
+            winit::keyboard::KeyCode::ShiftLeft => GameInput::Sneak,
+            winit::keyboard::KeyCode::KeyF => GameInput::ToggleWireframeView,
+            _ => return None,
+        };
+        Some(input)
     }
 }

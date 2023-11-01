@@ -1,6 +1,6 @@
 use common::{chunk::Chunk, resources::DeltaTime, state::SysResult};
 
-use render::{Globals, Renderer};
+use render::{GpuGlobals, Renderer};
 use vek::{Mat4, Vec2, Vec3};
 
 use crate::input::Input;
@@ -9,8 +9,8 @@ const Z_NEAR: f32 = 0.1;
 const Z_FAR: f32 = 1000.0;
 
 pub struct Matrices {
-    view: Mat4<f32>,
-    proj: Mat4<f32>,
+    pub view: Mat4<f32>,
+    pub proj: Mat4<f32>,
 }
 
 pub struct Camera {
@@ -71,6 +71,10 @@ impl Camera {
     pub fn set_aspect_ratio(&mut self, aspect: f32) {
         self.aspect = aspect;
     }
+
+    pub fn translate(&mut self, pos: Vec3<f32>) {
+        self.pos += pos;
+    }
 }
 
 use apecs::*;
@@ -78,6 +82,7 @@ use apecs::*;
 #[derive(CanFetch)]
 pub struct CameraSystem<'a> {
     renderer: Write<Renderer, NoDefault>,
+    gpu_globals: Write<GpuGlobals>,
     cameras: Query<&'a mut Camera>,
     delta: Read<DeltaTime>,
     input: Read<Input>,
@@ -116,15 +121,13 @@ pub fn camera_system(mut sys: CameraSystem) -> SysResult {
 
         let dir = Vec3::new(x, y, z);
         let delta = sys.delta.0;
-        let speed = 2.0;
+        let speed = 15.0;
         let dx = right * -dir.x * speed * delta;
         let dy = Vec3::unit_y() * dir.y * speed * delta;
         let dz = forward * dir.z * speed * delta;
         camera.pos += dx + dy + dz;
-
         let matrices = camera.build_matrices();
-        let globals = Globals::new(matrices.view, matrices.proj);
-        sys.renderer.write_globals(globals);
+        *sys.gpu_globals = GpuGlobals::new(matrices.view, matrices.proj);
     }
     ok()
 }

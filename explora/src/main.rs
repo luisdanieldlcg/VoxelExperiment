@@ -1,10 +1,17 @@
+pub mod scene;
+
 use common::{
     clock::Clock,
     state::{State, SysResult},
 };
-use explora::{camera::Camera, event::Events, input::Input, window::Window, App};
-use render::{ Renderer, TerrainBuffer};
-use winit::event::WindowEvent;
+use explora::{
+    camera::Camera,
+    event::{Events, WindowEvent},
+    input::Input,
+    window::Window,
+    App,
+};
+use render::{Renderer, TerrainRenderData, GpuGlobals};
 
 fn main() {
     env_logger::builder()
@@ -46,25 +53,26 @@ fn setup_ecs(renderer: Renderer) -> apecs::anyhow::Result<State> {
         .ecs_mut()
         .with_default_resource::<Input>()?
         .with_default_resource::<Events<WindowEvent>>()?
-        .with_default_resource::<TerrainBuffer>()?
+        .with_default_resource::<TerrainRenderData>()?
+        .with_default_resource::<GpuGlobals>()?
         .with_resource(renderer)?
-        .with_system("setup_system", setup)?
-        .with_system("window_event_system", explora::window::window_event_system)?
-        .with_system("render_system", render::render_system)?
-        .with_system("camera_system", explora::camera::camera_system)?
-        .with_system(
-            "terrain_system_setup",
-            explora::terrain::terrain_system_setup,
-        )?;
+        .with_system("setup", setup)?
+        .with_system("terrain_setup", explora::terrain::terrain_system_setup)?
+        .with_system_barrier()
+        .with_system("scene_update", scene_update_system)?
+        .with_system("camera", explora::camera::camera_system)?
+        .with_system_barrier()
+        .with_system("render", render::render_system)?;
 
     Ok(state)
 }
 
 use apecs::{end, Entities, NoDefault, Write};
+use scene::scene_update_system;
 
 fn setup((mut entities, _): (Write<Entities>, Write<Renderer, NoDefault>)) -> SysResult {
     let mut player = entities.create();
     // TODO: grab window / render surface size
-    player.insert_component(Camera::new(800.0 / 600.0));
+    player.insert_component(Camera::new(1920.0 / 1080.0));
     end()
 }

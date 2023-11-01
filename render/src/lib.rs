@@ -12,7 +12,9 @@ use vek::Mat4;
 use vertex::TerrainVertex;
 
 #[derive(Default)]
-pub struct TerrainBuffer(pub Option<Buffer<TerrainVertex>>);
+pub struct TerrainRenderData {
+    pub buffer: Option<Buffer<TerrainVertex>>,
+}
 
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
@@ -23,12 +25,12 @@ pub trait Vertex: bytemuck::Pod {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Zeroable, bytemuck::Pod)]
-pub struct Globals {
+pub struct GpuGlobals {
     pub view: [[f32; 4]; 4],
     pub proj: [[f32; 4]; 4],
 }
 
-impl Globals {
+impl GpuGlobals {
     pub fn new(view: Mat4<f32>, proj: Mat4<f32>) -> Self {
         Self {
             view: view.into_col_arrays(),
@@ -36,7 +38,7 @@ impl Globals {
         }
     }
 }
-impl Default for Globals {
+impl Default for GpuGlobals {
     fn default() -> Self {
         Self::new(Mat4::identity(), Mat4::identity())
     }
@@ -48,7 +50,7 @@ pub struct Renderer {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pipeline: wgpu::RenderPipeline,
-    globals_buffer: Buffer<Globals>,
+    globals_buffer: Buffer<GpuGlobals>,
     terrain_index_buffer: Buffer<u32>,
     globals_bind_group: wgpu::BindGroup,
     texture_bind_group: wgpu::BindGroup,
@@ -108,7 +110,7 @@ impl Renderer {
         let globals_buffer = Buffer::new(
             &device,
             wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            &[Globals::default()],
+            &[GpuGlobals::default()],
         );
 
         let globals_bind_group_layout =
@@ -254,7 +256,7 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
     }
 
-    pub fn write_globals(&mut self, globals: Globals) {
+    pub fn write_globals(&mut self, globals: GpuGlobals) {
         self.globals_buffer.write(&self.queue, &[globals]);
     }
 
@@ -295,7 +297,10 @@ impl Renderer {
 
 use apecs::*;
 pub fn render_system(
-    (renderer, terrain_buffer): (Read<Renderer, NoDefault>, Read<TerrainBuffer, NoDefault>),
+    (renderer, terrain_render_data): (
+        Read<Renderer, NoDefault>,
+        Read<TerrainRenderData, NoDefault>,
+    ),
 ) -> SysResult {
     let output = renderer.surface.get_current_texture()?;
     let view = output
@@ -336,7 +341,7 @@ pub fn render_system(
     render_pass.set_pipeline(&renderer.pipeline);
     render_pass.set_bind_group(0, &renderer.globals_bind_group, &[]);
     render_pass.set_bind_group(1, &renderer.texture_bind_group, &[]);
-    if let Some(buffer) = &terrain_buffer.0 {
+    if let Some(buffer) = &terrain_render_data.buffer {
         render_pass.set_vertex_buffer(0, buffer.slice());
     }
     render_pass.set_index_buffer(
