@@ -1,3 +1,4 @@
+// use noise::{BasicMulti, Perlin, NoiseFn};
 use vek::{Vec2, Vec3};
 
 use crate::block::BlockId;
@@ -15,8 +16,10 @@ impl Chunk {
         }
     }
 
-    pub fn generate(_: Vec2<i32>) -> Self {
+    pub fn generate(offset: Vec2<i32>) -> Self {
+
         let mut blocks = vec![BlockId::Air; Self::SIZE.product()];
+
         for x in 0..Self::SIZE.x {
             for y in 0..Self::SIZE.y {
                 for z in 0..Self::SIZE.z {
@@ -25,6 +28,7 @@ impl Chunk {
                         Some(i) => i,
                         None => continue,
                     };
+
                     blocks[index] = BlockId::Dirt;
                 }
             }

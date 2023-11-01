@@ -68,66 +68,73 @@ impl Camera {
         Vec3::new(f32::sin(self.rot.x), 0.0, f32::cos(self.rot.x)).normalized()
     }
 
+    pub fn update(&mut self, dt: f32, dir: Vec3<f32>) {
+        let forward = self.forward();
+        let right = self.right();
+        let speed = 20.0;
+        let dx = right * -dir.x * speed * dt;
+        let dy = Vec3::unit_y() * dir.y * speed * dt;
+        let dz = forward * dir.z * speed * dt;
+
+        self.pos += dx + dy + dz;
+    }
+
     pub fn set_aspect_ratio(&mut self, aspect: f32) {
         self.aspect = aspect;
     }
-
-    pub fn translate(&mut self, pos: Vec3<f32>) {
-        self.pos += pos;
-    }
 }
 
-use apecs::*;
+// use apecs::*;
 
-#[derive(CanFetch)]
-pub struct CameraSystem<'a> {
-    renderer: Write<Renderer, NoDefault>,
-    gpu_globals: Write<GpuGlobals>,
-    cameras: Query<&'a mut Camera>,
-    delta: Read<DeltaTime>,
-    input: Read<Input>,
-}
+// #[derive(CanFetch)]
+// pub struct CameraSystem<'a> {
+//     renderer: Write<Renderer, NoDefault>,
+//     gpu_globals: Write<GpuGlobals>,
+//     cameras: Query<&'a mut Camera>,
+//     delta: Read<DeltaTime>,
+//     input: Read<Input>,
+// }
 
-pub fn camera_system(mut sys: CameraSystem) -> SysResult {
-    let mut cameras = sys.cameras.query();
-    for camera in cameras.iter_mut() {
-        let mut x = 0.0;
-        let mut y = 0.0;
-        let mut z = 0.0;
+// pub fn camera_system(mut sys: CameraSystem) -> SysResult {
+//     let mut cameras = sys.cameras.query();
+//     for camera in cameras.iter_mut() {
+//         let mut x = 0.0;
+//         let mut y = 0.0;
+//         let mut z = 0.0;
 
-        let input = &sys.input;
+//         let input = &sys.input;
 
-        if input.is_key_down(winit::keyboard::KeyCode::KeyW) {
-            z += 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::KeyS) {
-            z -= 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::KeyA) {
-            x -= 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::KeyD) {
-            x += 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::Space) {
-            y += 1.0;
-        }
-        if input.is_key_down(winit::keyboard::KeyCode::ShiftLeft) {
-            y -= 1.0;
-        }
+//         if input.is_key_down(winit::keyboard::KeyCode::KeyW) {
+//             z += 1.0;
+//         }
+//         if input.is_key_down(winit::keyboard::KeyCode::KeyS) {
+//             z -= 1.0;
+//         }
+//         if input.is_key_down(winit::keyboard::KeyCode::KeyA) {
+//             x -= 1.0;
+//         }
+//         if input.is_key_down(winit::keyboard::KeyCode::KeyD) {
+//             x += 1.0;
+//         }
+//         if input.is_key_down(winit::keyboard::KeyCode::Space) {
+//             y += 1.0;
+//         }
+//         if input.is_key_down(winit::keyboard::KeyCode::ShiftLeft) {
+//             y -= 1.0;
+//         }
 
-        let forward = camera.forward();
-        let right = camera.right();
+//         let forward = camera.forward();
+//         let right = camera.right();
 
-        let dir = Vec3::new(x, y, z);
-        let delta = sys.delta.0;
-        let speed = 15.0;
-        let dx = right * -dir.x * speed * delta;
-        let dy = Vec3::unit_y() * dir.y * speed * delta;
-        let dz = forward * dir.z * speed * delta;
-        camera.pos += dx + dy + dz;
-        let matrices = camera.build_matrices();
-        *sys.gpu_globals = GpuGlobals::new(matrices.view, matrices.proj);
-    }
-    ok()
-}
+//         let dir = Vec3::new(x, y, z);
+//         let delta = sys.delta.0;
+//         let speed = 15.0;
+//         let dx = right * -dir.x * speed * delta;
+//         let dy = Vec3::unit_y() * dir.y * speed * delta;
+//         let dz = forward * dir.z * speed * delta;
+//         camera.pos += dx + dy + dz;
+//         let matrices = camera.build_matrices();
+//         *sys.gpu_globals = GpuGlobals::new(matrices.view, matrices.proj);
+//     }
+//     ok()
+// }

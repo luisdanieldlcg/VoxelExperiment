@@ -1,8 +1,11 @@
 use crate::event::WindowEvent;
 use crate::{event::Events, input::Input, App};
+use apecs::Write;
+use common::state::SysResult;
 use log::info;
-use render::{Renderer, GpuGlobals};
+use render::{GpuGlobals, Renderer};
 use vek::Vec2;
+
 use winit::{
     event_loop::{ControlFlow, EventLoop},
     keyboard::PhysicalKey,
@@ -13,6 +16,7 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop
         .run(move |event, elwt| {
+          
             match event {
                 winit::event::Event::AboutToWait => {
                     let events = app.state.resource_mut::<Events<WindowEvent>>();
@@ -27,7 +31,6 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
                             let globals = *app.state.resource::<GpuGlobals>();
                             let renderer = app.state.resource_mut::<Renderer>();
                             renderer.write_globals(globals);
-                            
                             app.state.tick(app.clock.dt());
                             app.clock.tick();
                         },
@@ -47,27 +50,12 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
                         },
                         winit::event::WindowEvent::KeyboardInput { event, .. } => {
                             if let PhysicalKey::Code(code) = event.physical_key {
-                                    let input = app.state.resource_mut::<Input>();
-
-                                 input.keys[code as usize] =
-                                        event.state == winit::event::ElementState::Pressed;
-                                if let Some(input) = Input::map_game_input(code) {
-                                    let events = app.state.resource_mut::<Events<WindowEvent>>();
-                                    events.send(WindowEvent::Input(
-                                        input,
-                                        event.state == winit::event::ElementState::Pressed,
-                                    ));
-
-                                   
+                                let input = app.state.resource_mut::<Input>();
+                                match event.state {
+                                    winit::event::ElementState::Pressed => input.press(code),
+                                    winit::event::ElementState::Released => input.release(code),
                                 }
                             }
-                        },
-
-                        winit::event::WindowEvent::MouseInput { state, button, .. } => {
-                            // events.send(WindowEvent::ButtonPress(
-                            //     button,
-                            //     state == ElementState::Pressed,
-                            // ));
                         },
                         _ => (),
                     }
@@ -81,11 +69,6 @@ pub fn run(event_loop: EventLoop<()>, mut app: App) {
                     events.send(WindowEvent::CursorMove(delta));
                 },
                 _ => (),
-            }
-
-            let input = app.state.resource::<Input>();
-            if input.is_key_down(winit::keyboard::KeyCode::Escape) {
-                elwt.exit();
             }
         })
         .unwrap();

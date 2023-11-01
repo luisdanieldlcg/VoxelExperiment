@@ -2,6 +2,7 @@ pub mod atlas;
 pub mod buffer;
 pub mod error;
 pub mod mesh;
+pub mod pipeline;
 pub mod texture;
 pub mod vertex;
 
@@ -14,6 +15,7 @@ use vertex::TerrainVertex;
 #[derive(Default)]
 pub struct TerrainRenderData {
     pub buffer: Option<Buffer<TerrainVertex>>,
+    pub wireframe_enabled: bool,
 }
 
 pub trait Vertex: bytemuck::Pod {
@@ -44,12 +46,17 @@ impl Default for GpuGlobals {
     }
 }
 
+pub struct Pipelines {
+    pub terrain: pipeline::TerrainPipeline,
+    pub terrain_wireframe: pipeline::TerrainPipeline,
+}
+
 pub struct Renderer {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    pipeline: wgpu::RenderPipeline,
+    pipelines: Pipelines,
     globals_buffer: Buffer<GpuGlobals>,
     terrain_index_buffer: Buffer<u32>,
     globals_bind_group: wgpu::BindGroup,
@@ -76,7 +83,7 @@ impl Renderer {
 
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::POLYGON_MODE_LINE,
                 limits: wgpu::Limits::default(),
                 label: None,
             },
@@ -179,66 +186,33 @@ impl Renderer {
                 },
             ],
         });
-
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&globals_bind_group_layout, &texture_bind_group_layout],
-                push_constant_ranges: &[],
-            });
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
-            layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[TerrainVertex::desc()],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::all(),
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
+        let pipelines = Pipelines {
+            terrain: pipeline::TerrainPipeline::new(
+                &device,
+                &[&globals_bind_group_layout, &texture_bind_group_layout],
+                &shader,
+                &config,
+                false,
+            ),
+            terrain_wireframe: pipeline::TerrainPipeline::new(
+                &device,
+                &[&globals_bind_group_layout, &texture_bind_group_layout],
+                &shader,
+                &config,
+                true,
+            ),
+        };
         let depth_texture = Texture::depth(&device, config.width, config.height);
         Ok(Self {
             surface,
             device,
             queue,
             config,
-            pipeline: render_pipeline,
-            // vertex_buffer,
             terrain_index_buffer,
             globals_buffer,
             globals_bind_group: globals_bindgroup,
             texture_bind_group,
+            pipelines,
             depth_texture,
         })
     }
@@ -338,7 +312,11 @@ pub fn render_system(
         occlusion_query_set: None,
         timestamp_writes: None,
     });
-    render_pass.set_pipeline(&renderer.pipeline);
+    if terrain_render_data.wireframe_enabled {
+        render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
+    } else {
+        render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
+    }
     render_pass.set_bind_group(0, &renderer.globals_bind_group, &[]);
     render_pass.set_bind_group(1, &renderer.texture_bind_group, &[]);
     if let Some(buffer) = &terrain_render_data.buffer {

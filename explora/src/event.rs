@@ -11,8 +11,8 @@ pub enum WindowEvent {
     Resize(Vec2<u32>),
     /// The cursor has been moved.
     CursorMove(Vec2<f32>),
-    /// A game key has been pressed or released.
-    Input(GameInput, bool),
+    /// A game key has been pressed.
+    KeyPress(GameInput, bool),
 }
 
 pub struct Events<T> {

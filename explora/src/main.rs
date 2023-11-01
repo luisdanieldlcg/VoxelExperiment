@@ -7,11 +7,11 @@ use common::{
 use explora::{
     camera::Camera,
     event::{Events, WindowEvent},
-    input::Input,
+    input::{self, Input},
     window::Window,
     App,
 };
-use render::{Renderer, TerrainRenderData, GpuGlobals};
+use render::{GpuGlobals, Renderer, TerrainRenderData};
 
 fn main() {
     env_logger::builder()
@@ -59,8 +59,9 @@ fn setup_ecs(renderer: Renderer) -> apecs::anyhow::Result<State> {
         .with_system("setup", setup)?
         .with_system("terrain_setup", explora::terrain::terrain_system_setup)?
         .with_system_barrier()
+        .with_system("game_input", input::game_input_system)?
+        .with_system_barrier()
         .with_system("scene_update", scene_update_system)?
-        .with_system("camera", explora::camera::camera_system)?
         .with_system_barrier()
         .with_system("render", render::render_system)?;
 

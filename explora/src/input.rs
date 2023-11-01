@@ -1,4 +1,8 @@
+use apecs::{CanFetch, Write};
+use common::state::SysResult;
 use vek::Vec2;
+
+use crate::event::{Events, WindowEvent};
 
 #[derive(Debug, Clone, Copy)]
 pub enum GameInput {
@@ -8,11 +12,12 @@ pub enum GameInput {
     MoveRight,
     Jump,
     Sneak,
-    ToggleWireframeView,
+    ToggleWireframe,
 }
 
 /// Input struct that holds the state of the keyboard and mouse.
 pub struct Input {
+    // TODO: consider tracking key releases, as false here just means the key is no longer pressed.
     pub keys: [bool; 256],
     pub buttons: [bool; 128],
     pub cursor_delta: Vec2<f32>,
@@ -28,9 +33,19 @@ impl Default for Input {
     }
 }
 
+type KeyCode = winit::keyboard::KeyCode;
+
 impl Input {
-    pub fn is_key_down(&self, key: winit::keyboard::KeyCode) -> bool {
-        self.keys[key as usize]
+    pub fn press(&mut self, input: KeyCode) {
+        self.keys[input as usize] = true;
+    }
+
+    pub fn pressed(&self, input: KeyCode) -> bool {
+        self.keys[input as usize]
+    }
+
+    pub fn release(&mut self, input: KeyCode) {
+        self.keys[input as usize] = false;
     }
 
     pub fn is_button_down(&self, button: winit::event::MouseButton) -> bool {
@@ -47,18 +62,42 @@ impl Input {
     pub fn cursor_delta(&self) -> Vec2<f32> {
         self.cursor_delta
     }
+}
 
-    pub fn map_game_input(key: winit::keyboard::KeyCode) -> Option<GameInput> {
-        let input = match key {
-            winit::keyboard::KeyCode::KeyW => GameInput::MoveForward,
-            winit::keyboard::KeyCode::KeyS => GameInput::MoveBackward,
-            winit::keyboard::KeyCode::KeyA => GameInput::MoveLeft,
-            winit::keyboard::KeyCode::KeyD => GameInput::MoveRight,
-            winit::keyboard::KeyCode::Space => GameInput::Jump,
-            winit::keyboard::KeyCode::ShiftLeft => GameInput::Sneak,
-            winit::keyboard::KeyCode::KeyF => GameInput::ToggleWireframeView,
-            _ => return None,
-        };
-        Some(input)
+use apecs::*;
+
+#[derive(CanFetch)]
+pub struct GameInputSystem {
+    events: Write<Events<WindowEvent>>,
+    input: Write<Input>,
+}
+
+pub fn game_input_system(mut system: GameInputSystem) -> SysResult {
+    const INPUT_MAPPING: [(KeyCode, GameInput); 7] = [
+        (KeyCode::KeyW, GameInput::MoveForward),
+        (KeyCode::KeyS, GameInput::MoveBackward),
+        (KeyCode::KeyA, GameInput::MoveLeft),
+        (KeyCode::KeyD, GameInput::MoveRight),
+        (KeyCode::Space, GameInput::Jump),
+        (KeyCode::ShiftLeft, GameInput::Sneak),
+        (KeyCode::F12, GameInput::ToggleWireframe),
+    ];
+
+    for (key, input) in INPUT_MAPPING.iter() {
+        if system.input.pressed(*key) {
+            system.events.send(WindowEvent::KeyPress(*input, true));
+        }
+        // TODO: send key releases as well.
+    }
+
+    ok()
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_input_update() {
+       
     }
 }
