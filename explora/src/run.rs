@@ -1,7 +1,5 @@
 use crate::event::WindowEvent;
 use crate::{event::Events, input::Input, App};
-use apecs::Write;
-use common::state::SysResult;
 use log::info;
 use render::{GpuGlobals, Renderer};
 use vek::Vec2;

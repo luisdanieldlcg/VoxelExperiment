@@ -1,4 +1,7 @@
-use noise::Perlin;
+use std::cmp::Ordering;
+
+use log::info;
+use noise::{NoiseFn, Perlin};
 // use noise::{BasicMulti, Perlin, NoiseFn};
 use vek::{Vec2, Vec3};
 
@@ -18,8 +21,10 @@ impl Chunk {
     }
 
     pub fn generate(offset: Vec2<i32>) -> Self {
-        // let noise = Perlin::new(1);
+        let noise = Perlin::new(11);
         let mut blocks = vec![BlockId::Air; Self::SIZE.product()];
+        let world_x = (offset.x * Self::SIZE.x as i32) as f64;
+        let world_z = (offset.y * Self::SIZE.z as i32) as f64;
         for x in 0..Self::SIZE.x {
             for y in 0..Self::SIZE.y {
                 for z in 0..Self::SIZE.z {
@@ -28,15 +33,36 @@ impl Chunk {
                         Some(i) => i,
                         None => continue,
                     };
+                    let noise_x = (world_x + x as f64) / 700.0;
+                    let noise_z = (world_z + z as f64) / 1600.0;
+                    let height = noise.get([noise_x, noise_z]);
+                    // Noise values are in range [-1, 1]
+                    // then adding 1 will transform them to [0, 2]
+                    // Dividing each of the new values by 2 will re-scale them to the final range [0,1]
+                    let height = height + 1.0 / 2.0;
+                    // Now we scale it to appropiate chunk height
+                    let height = (height * Self::SIZE.y as f64) as i32;
 
-                    if local_pos.y == (Self::SIZE.y - 1) as i32  {
+
+                    let offset = 700.0;
+                    let noise_x = (world_x + x as f64) / offset;
+                    let noise_z = (world_z + z as f64) / offset;
+                    let stone_height = noise.get([noise_x, noise_z]);
+                    let stone_height = stone_height + 1.0 / 2.0;
+                    let stone_height = (stone_height * Self::SIZE.y as f64) * 0.85;
+
+                   
+                    if local_pos.y < height {
+                        if local_pos.y < stone_height as i32 {
+                            blocks[index] = BlockId::Stone;
+                        } else {
+                            blocks[index] = BlockId::Dirt;
+                        }
+                    } else if local_pos.y == height {
                         blocks[index] = BlockId::Grass;
-                    } else if local_pos.y > 156 {
-                        blocks[index] = BlockId::Dirt;
                     } else {
-                        blocks[index] = BlockId::Stone;
+                        blocks[index] = BlockId::Air;
                     }
-
                 }
             }
         }

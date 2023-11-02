@@ -5,13 +5,14 @@ use common::{
     state::{State, SysResult},
 };
 use explora::{
+    block::{self, BlockMap},
     camera::Camera,
     event::{Events, WindowEvent},
     input::{self, Input},
     window::Window,
     App,
 };
-use render::{Blocks, GpuGlobals, Renderer, TerrainRenderData};
+use render::{GpuGlobals, Renderer, TerrainRenderData};
 
 fn main() {
     env_logger::builder()
@@ -28,7 +29,8 @@ fn main() {
     };
 
     window.trap_cursor(true);
-    let mut state = setup_ecs(renderer).expect("Failed to setup ECS. This is because one or more systems failed to run due to missing resources.");
+    let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
+    let mut state = setup_ecs(renderer, block_map).expect("Failed to setup ECS. This is because one or more systems failed to run due to missing resources.");
 
     let names = state.ecs_mut().get_sync_schedule_names();
 
@@ -46,11 +48,8 @@ fn main() {
     explora::run::run(event_loop, app);
 }
 
-fn setup_ecs(renderer: Renderer) -> apecs::anyhow::Result<State> {
+fn setup_ecs(renderer: Renderer, blocks: BlockMap) -> apecs::anyhow::Result<State> {
     let mut state = State::new()?;
-    state.ecs_mut().with_default_resource::<Blocks>()?;
-
-    renderer.set_block_resource(state.ecs_mut());
     state
         .ecs_mut()
         .with_default_resource::<Input>()?
@@ -58,6 +57,7 @@ fn setup_ecs(renderer: Renderer) -> apecs::anyhow::Result<State> {
         .with_default_resource::<TerrainRenderData>()?
         .with_default_resource::<GpuGlobals>()?
         .with_resource(renderer)?
+        .with_resource(blocks)?
         .with_system("setup", setup)?
         .with_system("terrain_setup", explora::terrain::terrain_system_setup)?
         .with_system_barrier()

@@ -1,8 +1,8 @@
 use common::{chunk::Chunk, dir::Direction, resources::TerrainMap};
-use log::{debug, info};
+use render::vertex::TerrainVertex;
 use vek::{Vec2, Vec3};
 
-use crate::{atlas::BlockMap, vertex::TerrainVertex};
+use crate::block::BlockMap;
 
 pub fn create_chunk_mesh(
     chunk: &Chunk,
@@ -81,91 +81,96 @@ pub fn create_chunk_mesh(
             continue;
         }
 
-        let block = match block_map.get(&id) {
-            Some(block) => block,
-            None => continue,
-        };
+        let block = block_map
+            .0
+            .get(&id)
+            .unwrap_or_else(|| panic!("The block with id: {} is not registered", id as u32));
 
         let top = block.textures.top;
         let bottom = block.textures.bottom;
         let side = block.textures.side;
         // North
         if render_quad(Direction::North) {
-            create_quad(
-                &mut vertices,
-                world_pos + Vec3::unit_z(),
-                Vec3::unit_y(),
-                Vec3::unit_x(),
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x() + Vec3::unit_z(),
                 side,
-            );
+            ));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), side));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_z() + Vec3::unit_y(),
+                side,
+            ));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_z() + Vec3::unit_x() + Vec3::unit_y(),
+                side,
+            ));
         }
 
         // South
         if render_quad(Direction::South) {
-            create_quad(
-                &mut vertices,
-                world_pos,
-                Vec3::unit_x(),
-                Vec3::unit_y(),
+            vertices.push(TerrainVertex::new(world_pos, side));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), side));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x() + Vec3::unit_y(),
                 side,
-            );
+            ));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), side));
         }
 
         // East
         if render_quad(Direction::East) {
-            create_quad(
-                &mut vertices,
-                world_pos + Vec3::unit_x(),
-                Vec3::unit_z(),
-                Vec3::unit_y(),
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), side));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x() + Vec3::unit_z(),
                 side,
-            );
+            ));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x() + Vec3::unit_z() + Vec3::unit_y(),
+                side,
+            ));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x() + Vec3::unit_y(),
+                side,
+            ));
         }
 
         // West
         if render_quad(Direction::West) {
-            create_quad(
-                &mut vertices,
-                world_pos,
-                Vec3::unit_y(),
-                Vec3::unit_z(),
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), side));
+            vertices.push(TerrainVertex::new(world_pos, side));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), side));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_z() + Vec3::unit_y(),
                 side,
-            );
+            ));
         }
         // Bottom
         if render_quad(Direction::Down) {
-            create_quad(
-                &mut vertices,
-                world_pos,
-                Vec3::unit_z(),
-                Vec3::unit_x(),
+            vertices.push(TerrainVertex::new(world_pos, bottom));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), bottom));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x() + Vec3::unit_z(),
                 bottom,
-            );
+            ));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), bottom));
         }
 
         // Top
         if render_quad(Direction::Up) {
-            create_quad(
-                &mut vertices,
-                world_pos + Vec3::unit_y(),
-                Vec3::unit_x(),
-                Vec3::unit_z(),
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), top));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_y() + Vec3::unit_x(),
                 top,
-            );
+            ));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_y() + Vec3::unit_x() + Vec3::unit_z(),
+                top,
+            ));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_y() + Vec3::unit_z(),
+                top,
+            ));
         }
     }
     vertices
-}
-
-fn create_quad(
-    mesh: &mut Vec<TerrainVertex>,
-    origin: Vec3<i32>,
-    unit_x: Vec3<i32>,
-    unit_y: Vec3<i32>,
-    id: u32,
-) {
-    mesh.push(TerrainVertex::new(origin, id));
-    mesh.push(TerrainVertex::new(origin + unit_x, id));
-    mesh.push(TerrainVertex::new(origin + unit_x + unit_y, id));
-    mesh.push(TerrainVertex::new(origin + unit_y, id));
 }

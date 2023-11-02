@@ -8,9 +8,9 @@ pub struct TerrainVertex {
 }
 
 impl TerrainVertex {
-    pub fn new(positions: vek::Vec3<i32>, texture_id: u32) -> Self {
+    pub fn new(position: vek::Vec3<i32>, texture_id: u32) -> Self {
         Self {
-            positions: positions.map(|f| f as f32).into_array(),
+            positions: position.map(|f| f as f32).into_array(),
             texture_id,
         }
     }

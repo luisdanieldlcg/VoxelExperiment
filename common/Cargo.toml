@@ -9,4 +9,5 @@ edition = "2021"
 apecs = { workspace = true }
 log = { workspace = true }
 noise = "0.8.2"
+rand = "0.8.5"
 vek = { workspace = true }

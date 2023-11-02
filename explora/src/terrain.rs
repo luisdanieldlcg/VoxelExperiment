@@ -1,32 +1,36 @@
 use common::{chunk::Chunk, resources::TerrainMap, state::SysResult};
-use log::info;
-use render::{Blocks, Renderer, TerrainRenderData};
+use render::{Renderer, TerrainRenderData};
 use vek::Vec2;
 
 use apecs::*;
+
+use crate::{block::BlockMap, mesh};
 
 #[derive(CanFetch)]
 pub struct TerrainSystem {
     renderer: Write<Renderer, NoDefault>,
     terrain_map: Write<TerrainMap>,
+    block_map: Read<BlockMap>,
     terrain_render_data: Write<TerrainRenderData, NoDefault>,
-    blocks: Read<Blocks>,
 }
 
 pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
-    for x in -1..1 {
-        for z in -1..1 {
+    let terrain = system.terrain_map.inner_mut();
+    let blocks = system.block_map.inner();
+
+    let radius = 2;
+    for x in -radius..radius {
+        for z in -radius..radius {
             let pos = Vec2::new(x, z);
             let chunk = Chunk::generate(pos);
-            system.terrain_map.0.insert(pos, chunk);
+            terrain.0.insert(pos, chunk);
         }
     }
 
     let mut mesh_work = vec![];
-    let blocks = system.blocks.inner();
-    for (pos, chunk) in system.terrain_map.0.iter() {
-        let mesh =
-            render::mesh::create_chunk_mesh(chunk, *pos, system.terrain_map.inner(), &blocks.map);
+
+    for (pos, chunk) in terrain.0.iter() {
+        let mesh = mesh::create_chunk_mesh(chunk, *pos, terrain, blocks);
         mesh_work.extend(mesh);
     }
 
