@@ -97,7 +97,5 @@ pub fn game_input_system(mut system: GameInputSystem) -> SysResult {
 mod tests {
 
     #[test]
-    fn test_input_update() {
-       
-    }
+    fn test_input_update() {}
 }

@@ -1,5 +1,6 @@
 use common::{chunk::Chunk, resources::TerrainMap, state::SysResult};
-use render::{Renderer, TerrainRenderData};
+use log::info;
+use render::{Blocks, Renderer, TerrainRenderData};
 use vek::Vec2;
 
 use apecs::*;
@@ -9,6 +10,7 @@ pub struct TerrainSystem {
     renderer: Write<Renderer, NoDefault>,
     terrain_map: Write<TerrainMap>,
     terrain_render_data: Write<TerrainRenderData, NoDefault>,
+    blocks: Read<Blocks>,
 }
 
 pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
@@ -21,9 +23,10 @@ pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
     }
 
     let mut mesh_work = vec![];
-
+    let blocks = system.blocks.inner();
     for (pos, chunk) in system.terrain_map.0.iter() {
-        let mesh = render::mesh::create_chunk_mesh(chunk, *pos, system.terrain_map.inner());
+        let mesh =
+            render::mesh::create_chunk_mesh(chunk, *pos, system.terrain_map.inner(), &blocks.map);
         mesh_work.extend(mesh);
     }
 

@@ -11,7 +11,7 @@ use explora::{
     window::Window,
     App,
 };
-use render::{GpuGlobals, Renderer, TerrainRenderData};
+use render::{Blocks, GpuGlobals, Renderer, TerrainRenderData};
 
 fn main() {
     env_logger::builder()
@@ -22,7 +22,6 @@ fn main() {
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),
     });
-
     let Ok(renderer) = Renderer::new(window.platform()) else {
         // TODO: proper error handling
         panic!("Failed to create renderer");
@@ -49,6 +48,9 @@ fn main() {
 
 fn setup_ecs(renderer: Renderer) -> apecs::anyhow::Result<State> {
     let mut state = State::new()?;
+    state.ecs_mut().with_default_resource::<Blocks>()?;
+
+    renderer.set_block_resource(state.ecs_mut());
     state
         .ecs_mut()
         .with_default_resource::<Input>()?

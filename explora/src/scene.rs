@@ -44,20 +44,21 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
                         dir.z -= val;
                     },
                     GameInput::MoveLeft => {
-                        dir.x -=val;
+                        dir.x -= val;
                     },
                     GameInput::MoveRight => {
                         dir.x += val;
                     },
                     GameInput::Jump => {
-                        dir.y +=val;
+                        dir.y += val;
                     },
                     GameInput::Sneak => {
                         dir.y -= val;
                     },
                     GameInput::ToggleWireframe => {
                         if *state {
-                            scene.terrain_render_data.wireframe_enabled= !scene.terrain_render_data.wireframe_enabled;
+                            scene.terrain_render_data.wireframe_enabled =
+                                !scene.terrain_render_data.wireframe_enabled;
                         }
                     },
                 }

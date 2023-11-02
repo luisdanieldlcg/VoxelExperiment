@@ -1,3 +1,4 @@
+use noise::Perlin;
 // use noise::{BasicMulti, Perlin, NoiseFn};
 use vek::{Vec2, Vec3};
 
@@ -17,9 +18,8 @@ impl Chunk {
     }
 
     pub fn generate(offset: Vec2<i32>) -> Self {
-
+        // let noise = Perlin::new(1);
         let mut blocks = vec![BlockId::Air; Self::SIZE.product()];
-
         for x in 0..Self::SIZE.x {
             for y in 0..Self::SIZE.y {
                 for z in 0..Self::SIZE.z {
@@ -29,7 +29,14 @@ impl Chunk {
                         None => continue,
                     };
 
-                    blocks[index] = BlockId::Dirt;
+                    if local_pos.y == (Self::SIZE.y - 1) as i32  {
+                        blocks[index] = BlockId::Grass;
+                    } else if local_pos.y > 156 {
+                        blocks[index] = BlockId::Dirt;
+                    } else {
+                        blocks[index] = BlockId::Stone;
+                    }
+
                 }
             }
         }

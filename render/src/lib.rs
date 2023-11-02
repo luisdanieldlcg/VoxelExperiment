@@ -8,6 +8,7 @@ pub mod vertex;
 
 use buffer::Buffer;
 use common::state::SysResult;
+use log::info;
 use texture::Texture;
 use vek::Mat4;
 use vertex::TerrainVertex;
@@ -18,6 +19,10 @@ pub struct TerrainRenderData {
     pub wireframe_enabled: bool,
 }
 
+#[derive(Default)]
+pub struct Blocks {
+    pub map: atlas::BlockMap,
+}
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
 
@@ -62,6 +67,7 @@ pub struct Renderer {
     globals_bind_group: wgpu::BindGroup,
     texture_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
+    block_map: atlas::BlockMap,
 }
 
 impl Renderer {
@@ -145,10 +151,15 @@ impl Renderer {
                 resource: globals_buffer.as_entire_binding(),
             }],
         });
-        let atlas = atlas::create_atlas("assets/textures/block", 16, 16);
+        let (atlas_buffer, atlas_tiles) = atlas::create_atlas("assets/textures/block", 16, 16);
+        let blocks = atlas::load_blocks("assets/blocks", atlas_tiles);
 
-        let atlas_texture =
-            texture::Texture::new(&device, &queue, image::DynamicImage::ImageRgba8(atlas));
+        let atlas_texture = texture::Texture::new(
+            &device,
+            &queue,
+            image::DynamicImage::ImageRgba8(atlas_buffer),
+        );
+
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Texture Bind Group Layout"),
@@ -214,6 +225,7 @@ impl Renderer {
             texture_bind_group,
             pipelines,
             depth_texture,
+            block_map: blocks,
         })
     }
 
@@ -237,6 +249,14 @@ impl Renderer {
     pub fn create_vertex_buffer<T: Vertex>(&mut self, data: &[T]) -> Buffer<T> {
         self.check_index_buffer::<T>(data.len());
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
+    }
+
+    pub fn set_block_resource(&self, ecs: &mut apecs::World) {
+        info!("Blocks in block map: {}", self.block_map.len());
+        let blocks = ecs.resource_mut::<Blocks>().unwrap();
+        *blocks = Blocks {
+            map: self.block_map.clone(),
+        };
     }
 
     pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {

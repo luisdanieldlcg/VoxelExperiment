@@ -1,18 +1,16 @@
 use common::{chunk::Chunk, dir::Direction, resources::TerrainMap};
+use log::{debug, info};
 use vek::{Vec2, Vec3};
 
-use crate::vertex::TerrainVertex;
+use crate::{atlas::BlockMap, vertex::TerrainVertex};
 
 pub fn create_chunk_mesh(
     chunk: &Chunk,
     chunk_pos: Vec2<i32>,
-    map: &TerrainMap,
+    terrain_map: &TerrainMap,
+    block_map: &BlockMap,
 ) -> Vec<TerrainVertex> {
     let mut vertices = Vec::with_capacity(Chunk::SIZE.product());
-
-    let dirt = 0;
-    let grass = 2;
-
     for pos in chunk.iter() {
         let render_quad = |direction: Direction| {
             let dir = direction.vec(); // The direction of the face we are checking for render
@@ -30,7 +28,7 @@ pub fn create_chunk_mesh(
                 // Now we have to check if there is a chunk adjacent to this one
                 let neighbor_chunk_dir = Vec2::new(chunk_pos.x + dir.x, chunk_pos.y + dir.z);
 
-                let Some(neighbor_chunk) = map.0.get(&(neighbor_chunk_dir)) else {
+                let Some(neighbor_chunk) = terrain_map.0.get(&(neighbor_chunk_dir)) else {
                     // If there is no adjacent chunk we have to render the quad
                     // because it is a border of the chunk
                     return true;
@@ -74,6 +72,23 @@ pub fn create_chunk_mesh(
             pos.z + chunk_pos.y * Chunk::SIZE.z as i32,
         );
 
+        let id = match chunk.get(pos) {
+            Some(id) => id,
+            None => continue,
+        };
+
+        if id.is_air() {
+            continue;
+        }
+
+        let block = match block_map.get(&id) {
+            Some(block) => block,
+            None => continue,
+        };
+
+        let top = block.textures.top;
+        let bottom = block.textures.bottom;
+        let side = block.textures.side;
         // North
         if render_quad(Direction::North) {
             create_quad(
@@ -81,7 +96,7 @@ pub fn create_chunk_mesh(
                 world_pos + Vec3::unit_z(),
                 Vec3::unit_y(),
                 Vec3::unit_x(),
-                dirt,
+                side,
             );
         }
 
@@ -92,7 +107,7 @@ pub fn create_chunk_mesh(
                 world_pos,
                 Vec3::unit_x(),
                 Vec3::unit_y(),
-                dirt,
+                side,
             );
         }
 
@@ -103,7 +118,7 @@ pub fn create_chunk_mesh(
                 world_pos + Vec3::unit_x(),
                 Vec3::unit_z(),
                 Vec3::unit_y(),
-                dirt,
+                side,
             );
         }
 
@@ -114,7 +129,7 @@ pub fn create_chunk_mesh(
                 world_pos,
                 Vec3::unit_y(),
                 Vec3::unit_z(),
-                dirt,
+                side,
             );
         }
         // Bottom
@@ -124,7 +139,7 @@ pub fn create_chunk_mesh(
                 world_pos,
                 Vec3::unit_z(),
                 Vec3::unit_x(),
-                dirt,
+                bottom,
             );
         }
 
@@ -135,7 +150,7 @@ pub fn create_chunk_mesh(
                 world_pos + Vec3::unit_y(),
                 Vec3::unit_x(),
                 Vec3::unit_z(),
-                grass,
+                top,
             );
         }
     }
