@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
+common = { path = "../common", package = "explora_common" }

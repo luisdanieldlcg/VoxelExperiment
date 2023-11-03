@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::resources::{DeltaTime, TerrainMap};
+use crate::resources::{DeltaTime, GameMode, TerrainMap};
 
 pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;
 
@@ -8,12 +8,22 @@ pub struct State {
     world: apecs::World,
 }
 
-#[allow(clippy::new_without_default)]
 impl State {
-    pub fn new() -> apecs::anyhow::Result<Self> {
+    pub fn client() -> apecs::anyhow::Result<Self> {
+        let state = Self::new(GameMode::Client)?;
+        Ok(state)
+    }
+
+    pub fn server() -> apecs::anyhow::Result<Self> {
+        let state = Self::new(GameMode::Server)?;
+        Ok(state)
+    }
+
+    pub fn new(mode: GameMode) -> apecs::anyhow::Result<Self> {
         let mut world = apecs::World::default();
         world.with_default_resource::<DeltaTime>()?;
         world.with_default_resource::<TerrainMap>()?;
+        world.with_resource(mode)?;
         Ok(Self { world })
     }
 

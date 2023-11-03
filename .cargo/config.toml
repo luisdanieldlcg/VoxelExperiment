@@ -1,0 +1,2 @@
+[alias]
+server = "run -p explora_server_cli"

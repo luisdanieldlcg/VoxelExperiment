@@ -1,9 +1,5 @@
-use common::{resources::DeltaTime, state::SysResult};
-use explora::{
-    camera::Camera,
-    event::{Events, WindowEvent},
-    input::GameInput,
-};
+use common::{events::Events, resources::DeltaTime, state::SysResult};
+use explora::{camera::Camera, input::GameInput, window::WindowEvent};
 
 use apecs::*;
 use render::{GpuGlobals, TerrainRenderData};

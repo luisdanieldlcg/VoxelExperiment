@@ -58,7 +58,7 @@ impl Chunk {
                             } else {
                                 blocks[index] = BlockId::Dirt;
                             }
-                        }
+                        },
                         Ordering::Equal => blocks[index] = BlockId::Grass,
                         Ordering::Greater => blocks[index] = BlockId::Air,
                     }

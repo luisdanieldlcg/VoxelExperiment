@@ -6,7 +6,6 @@ pub mod texture;
 pub mod vertex;
 
 use buffer::Buffer;
-use common::state::SysResult;
 use texture::Texture;
 use vek::Mat4;
 use vertex::TerrainVertex;
@@ -284,7 +283,7 @@ pub fn render_system(
         Read<Renderer, NoDefault>,
         Read<TerrainRenderData, NoDefault>,
     ),
-) -> SysResult {
+) -> apecs::anyhow::Result<ShouldContinue> {
     let output = renderer.surface.get_current_texture()?;
     let view = output
         .texture

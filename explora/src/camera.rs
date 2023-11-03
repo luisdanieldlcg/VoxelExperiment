@@ -1,6 +1,5 @@
 use common::chunk::Chunk;
 
-use log::debug;
 use vek::{Mat4, Vec2, Vec3};
 
 const Z_NEAR: f32 = 0.1;
@@ -75,9 +74,6 @@ impl Camera {
         let dz = forward * dir.z * speed * dt;
 
         self.pos += dx + dy + dz;
-
-        // let tgt = self.camera_target();
-        // debug!("Camera target: {}", tgt);
     }
 
     pub fn set_aspect_ratio(&mut self, aspect: f32) {

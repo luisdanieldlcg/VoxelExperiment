@@ -1,8 +1,6 @@
 use apecs::{CanFetch, Write};
-use common::state::SysResult;
+use common::{events::Events, state::SysResult};
 use vek::Vec2;
-
-use crate::event::{Events, WindowEvent};
 
 #[derive(Debug, Clone, Copy)]
 pub enum GameInput {
@@ -65,6 +63,8 @@ impl Input {
 }
 
 use apecs::*;
+
+use crate::window::WindowEvent;
 
 #[derive(CanFetch)]
 pub struct GameInputSystem {

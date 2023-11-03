@@ -1,15 +1,14 @@
 pub mod scene;
 
-use common::{
-    clock::Clock,
-    state::{State, SysResult},
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+use common::{clock::Clock, events::Events, state::SysResult};
 use explora::{
     block::{self, BlockMap},
     camera::Camera,
-    event::{Events, WindowEvent},
+    client::Client,
     input::{self, Input},
-    window::Window,
+    window::{Window, WindowEvent},
     App,
 };
 use render::{GpuGlobals, Renderer, TerrainRenderData};
@@ -30,27 +29,23 @@ fn main() {
 
     window.trap_cursor(false);
     let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
-    let mut state = setup_ecs(renderer, block_map).expect("Failed to setup ECS. This is because one or more systems failed to run due to missing resources.");
-
-    let names = state.ecs_mut().get_sync_schedule_names();
-
-    log::debug!("Order of systems:");
-    for (i, system) in names.iter().enumerate() {
-        log::debug!("{}: {:?}", i, system);
-    }
-
+    // let mut state = setup_ecs(renderer, block_map).expect("Failed to setup ECS. This is because one or more systems failed to run due to missing resources.");
     let clock = Clock::default();
-    let app = App {
-        window,
-        clock,
-        state,
-    };
-    explora::run::run(event_loop, app);
+    let app = App { window, clock };
+    let mut client = Client::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1234));
+    // register game-specific state
+    setup_ecs(&mut client, renderer, block_map).expect("Failed to setup game state");
+
+    explora::run::run(event_loop, app, client);
 }
 
-fn setup_ecs(renderer: Renderer, blocks: BlockMap) -> apecs::anyhow::Result<State> {
-    let mut state = State::new()?;
-    state
+fn setup_ecs(
+    client: &mut Client,
+    renderer: Renderer,
+    blocks: BlockMap,
+) -> apecs::anyhow::Result<()> {
+    client
+        .state_mut()
         .ecs_mut()
         .with_default_resource::<Input>()?
         .with_default_resource::<Events<WindowEvent>>()?
@@ -67,7 +62,12 @@ fn setup_ecs(renderer: Renderer, blocks: BlockMap) -> apecs::anyhow::Result<Stat
         .with_system_barrier()
         .with_system("render", render::render_system)?;
 
-    Ok(state)
+    let names = client.state_mut().ecs_mut().get_sync_schedule_names();
+    log::debug!("System schedule order:");
+    for (i, system) in names.iter().enumerate() {
+        log::debug!("{}: {:?}", i, system);
+    }
+    Ok(())
 }
 
 use apecs::{end, Entities, NoDefault, Write};

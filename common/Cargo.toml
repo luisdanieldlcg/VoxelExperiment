@@ -11,3 +11,5 @@ log = { workspace = true }
 rand = "0.8.5"
 vek = { workspace = true }
 noise = { workspace = true }
+serde = { workspace = true }
+bincode = { workspace = true }

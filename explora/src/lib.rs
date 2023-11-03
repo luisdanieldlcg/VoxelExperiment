@@ -1,9 +1,9 @@
-use common::{clock::Clock, state::State};
+use common::clock::Clock;
 
 pub mod block;
 pub mod camera;
+pub mod client;
 pub mod error;
-pub mod event;
 pub mod input;
 pub mod mesh;
 pub mod run;
@@ -13,5 +13,4 @@ pub mod window;
 pub struct App {
     pub window: window::Window,
     pub clock: Clock,
-    pub state: State,
 }
