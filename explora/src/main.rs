@@ -28,7 +28,7 @@ fn main() {
         panic!("Failed to create renderer");
     };
 
-    window.trap_cursor(true);
+    window.trap_cursor(false);
     let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
     let mut state = setup_ecs(renderer, block_map).expect("Failed to setup ECS. This is because one or more systems failed to run due to missing resources.");
 

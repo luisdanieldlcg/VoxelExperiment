@@ -11,7 +11,7 @@ impl Window {
         let event_loop = winit::event_loop::EventLoop::new().expect("Failed to create event loop");
         let platform = winit::window::WindowBuilder::new()
             .with_title("Explora")
-            .with_inner_size(winit::dpi::PhysicalSize::new(800, 600))
+            .with_inner_size(winit::dpi::PhysicalSize::new(1920, 1080))
             .build(&event_loop)?;
 
         let this = Self { platform };
