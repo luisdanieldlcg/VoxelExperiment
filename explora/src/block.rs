@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
-use common::block::BlockId;
+use core::block::BlockId;
 use log::info;
-use render::atlas::AtlasTileTexture;
+use render::atlas::AtlasRect;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]
@@ -39,7 +39,7 @@ pub struct SettingsParser {
     name: String,
 }
 
-pub fn load_blocks<P: AsRef<Path>>(path: P, block_atlas: &[AtlasTileTexture]) -> BlockMap {
+pub fn load_blocks<P: AsRef<Path>>(path: P, block_atlas: &[AtlasRect]) -> BlockMap {
     let Ok(dir) = std::fs::read_dir(path.as_ref()) else {
         panic!(
             "The directory `{}` does not exists.",

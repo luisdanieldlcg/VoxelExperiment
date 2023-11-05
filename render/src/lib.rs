@@ -1,10 +1,12 @@
 pub mod atlas;
+pub mod bindings;
 pub mod buffer;
 pub mod error;
 pub mod pipeline;
 pub mod texture;
 pub mod vertex;
 
+use atlas::BlockAtlas;
 use buffer::Buffer;
 use texture::Texture;
 use vek::Mat4;
@@ -57,10 +59,9 @@ pub struct Renderer {
     pipelines: Pipelines,
     globals_buffer: Buffer<GpuGlobals>,
     terrain_index_buffer: Buffer<u32>,
-    globals_bind_group: wgpu::BindGroup,
-    texture_bind_group: wgpu::BindGroup,
+    core_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
-    block_atlas: atlas::BlockAtlas,
+    block_atlas: BlockAtlas,
 }
 
 impl Renderer {
@@ -119,93 +120,38 @@ impl Renderer {
             &[GpuGlobals::default()],
         );
 
-        let globals_bind_group_layout =
+        let block_atlas = BlockAtlas::create(&device, &queue, "assets/textures/block", 16, 16);
+
+        let core_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Globals Bind Group Layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
+                label: Some("Core Bind Group Layout"),
+                entries: &bindings::core_bind_group_layouts(),
             });
 
-        let terrain_index_buffer = compute_terrain_indices(&device, 5000);
-
-        let globals_bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Globals Bind Group"),
-            layout: &globals_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: globals_buffer.as_entire_binding(),
-            }],
+        let core_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Core Bind Group"),
+            layout: &core_bind_group_layout,
+            entries: &bindings::core_bind_groups(&globals_buffer, &block_atlas),
         });
-        let (block_atlas, atlas_texture) = atlas::create_atlas("assets/textures/block", 16, 16);
 
-        let atlas_texture = texture::Texture::new(
-            &device,
-            &queue,
-            image::DynamicImage::ImageRgba8(atlas_texture),
-        );
-
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Texture Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-
-        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Texture Bind Group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&atlas_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&atlas_texture.sampler),
-                },
-            ],
-        });
         let pipelines = Pipelines {
             terrain: pipeline::TerrainPipeline::new(
                 &device,
-                &[&globals_bind_group_layout, &texture_bind_group_layout],
+                &[&core_bind_group_layout],
                 &shader,
                 &config,
                 false,
             ),
             terrain_wireframe: pipeline::TerrainPipeline::new(
                 &device,
-                &[&globals_bind_group_layout, &texture_bind_group_layout],
+                &[&core_bind_group_layout],
                 &shader,
                 &config,
                 true,
             ),
         };
         let depth_texture = Texture::depth(&device, config.width, config.height);
+        let terrain_index_buffer = compute_terrain_indices(&device, 5000);
         Ok(Self {
             surface,
             device,
@@ -213,8 +159,7 @@ impl Renderer {
             config,
             terrain_index_buffer,
             globals_buffer,
-            globals_bind_group: globals_bindgroup,
-            texture_bind_group,
+            core_bind_group,
             pipelines,
             depth_texture,
             block_atlas,
@@ -278,14 +223,36 @@ impl Renderer {
 }
 
 use apecs::*;
+
 pub fn render_system(
     (renderer, terrain_render_data): (
         Read<Renderer, NoDefault>,
         Read<TerrainRenderData, NoDefault>,
     ),
 ) -> apecs::anyhow::Result<ShouldContinue> {
-    let output = renderer.surface.get_current_texture()?;
-    let view = output
+    let surface = match renderer.surface.get_current_texture() {
+        Ok(t) => t,
+        Err(err) => {
+            match err {
+                wgpu::SurfaceError::Timeout | wgpu::SurfaceError::Outdated => {
+                    log::warn!("{:?}", err);
+                    return ok();
+                },
+                wgpu::SurfaceError::Lost => {
+                    log::warn!("Swapchain is lost, recreating...");
+                    renderer
+                        .surface
+                        .configure(&renderer.device, &renderer.config);
+                    return ok();
+                },
+                wgpu::SurfaceError::OutOfMemory => {
+                    panic!("Render system error: There is no more memory left to allocate a new frame. ");
+                },
+            }
+        },
+    };
+
+    let view = surface
         .texture
         .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -294,6 +261,7 @@ pub fn render_system(
         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
+
     let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("Render Pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -320,13 +288,13 @@ pub fn render_system(
         occlusion_query_set: None,
         timestamp_writes: None,
     });
+
     if terrain_render_data.wireframe_enabled {
         render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
     } else {
         render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
     }
-    render_pass.set_bind_group(0, &renderer.globals_bind_group, &[]);
-    render_pass.set_bind_group(1, &renderer.texture_bind_group, &[]);
+    render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
     if let Some(buffer) = &terrain_render_data.buffer {
         render_pass.set_vertex_buffer(0, buffer.slice());
     }
@@ -338,8 +306,9 @@ pub fn render_system(
 
     drop(render_pass);
     renderer.queue.submit(Some(encoder.finish()));
-    output.present();
-    Ok(ShouldContinue::Yes)
+    surface.present();
+
+    ok()
 }
 
 fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<u32> {

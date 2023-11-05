@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 server = { path = "../server", package = "explora_server" }
-common = { path = "../common", package = "explora_common" }
+core = { path = "../core", package = "explora_core" }
 log = { workspace = true }
 env_logger = "0.10.0"

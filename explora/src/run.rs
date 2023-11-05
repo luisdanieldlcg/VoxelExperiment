@@ -1,4 +1,4 @@
-use common::events::Events;
+use core::events::Events;
 use log::info;
 use render::{GpuGlobals, Renderer};
 use vek::Vec2;

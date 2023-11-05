@@ -1,4 +1,4 @@
-use common::chunk::Chunk;
+use core::chunk::Chunk;
 
 use vek::{Mat4, Vec2, Vec3};
 
@@ -72,7 +72,6 @@ impl Camera {
         let dx = right * -dir.x * speed * dt;
         let dy = Vec3::unit_y() * dir.y * speed * dt;
         let dz = forward * dir.z * speed * dt;
-
         self.pos += dx + dy + dz;
     }
 

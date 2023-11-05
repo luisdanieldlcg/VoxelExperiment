@@ -2,8 +2,6 @@ use std::time::Duration;
 
 use crate::resources::{DeltaTime, GameMode, TerrainMap};
 
-pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;
-
 pub struct State {
     world: apecs::World,
 }

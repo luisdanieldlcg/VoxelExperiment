@@ -1,4 +1,4 @@
-use common::{events::Events, resources::DeltaTime, state::SysResult};
+use core::{events::Events, resources::DeltaTime, SysResult};
 use explora::{camera::Camera, input::GameInput, window::WindowEvent};
 
 use apecs::*;

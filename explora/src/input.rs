@@ -1,5 +1,5 @@
 use apecs::{CanFetch, Write};
-use common::{events::Events, state::SysResult};
+use core::{events::Events, SysResult};
 use vek::Vec2;
 
 #[derive(Debug, Clone, Copy)]

@@ -1,4 +1,4 @@
-use common::{chunk::Chunk, resources::TerrainMap, state::SysResult};
+use core::{chunk::Chunk, resources::TerrainMap, SysResult};
 use noise::Perlin;
 use rand::Rng;
 use render::{Renderer, TerrainRenderData};

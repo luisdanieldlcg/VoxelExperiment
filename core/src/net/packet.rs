@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientPacket {
     Connect,
-    Disconnect
+    Disconnect,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

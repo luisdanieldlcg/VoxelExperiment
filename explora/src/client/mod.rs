@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, time::Duration};
 
-use common::{
+use core::{
     net::{
         con::Connection,
         packet::{ClientPacket, ServerPacket},

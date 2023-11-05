@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use common::{
+use core::{
     net::con::Connection,
     net::packet::{ClientPacket, ServerPacket},
     state::State,
@@ -36,7 +36,7 @@ impl Server {
                 },
                 ClientPacket::Disconnect => {
                     info!("Client disconnected.");
-                }
+                },
             }
         }
     }

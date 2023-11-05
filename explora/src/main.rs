@@ -2,7 +2,7 @@ pub mod scene;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use common::{clock::Clock, events::Events, state::SysResult};
+use core::{clock::Clock, events::Events, SysResult};
 use explora::{
     block::{self, BlockMap},
     camera::Camera,
@@ -29,7 +29,6 @@ fn main() {
 
     window.trap_cursor(false);
     let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
-    // let mut state = setup_ecs(renderer, block_map).expect("Failed to setup ECS. This is because one or more systems failed to run due to missing resources.");
     let clock = Clock::default();
     let app = App { window, clock };
     let mut client = Client::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1234));

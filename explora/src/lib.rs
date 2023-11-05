@@ -1,4 +1,4 @@
-use common::clock::Clock;
+use core::clock::Clock;
 
 pub mod block;
 pub mod camera;

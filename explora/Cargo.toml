@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 render = { path = "../render", package = "explora_render" }
-common = { path = "../common", package = "explora_common" }
+core = { path = "../core", package = "explora_core" }
 log = { workspace = true }
 vek = { workspace = true }
 apecs = { workspace = true }

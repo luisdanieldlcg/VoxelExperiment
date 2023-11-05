@@ -1,4 +1,4 @@
-use common::{chunk::Chunk, dir::Direction, resources::TerrainMap};
+use core::{chunk::Chunk, dir::Direction, resources::TerrainMap};
 use render::vertex::TerrainVertex;
 use vek::{Vec2, Vec3};
 
