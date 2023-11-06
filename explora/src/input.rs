@@ -1,5 +1,6 @@
 use apecs::{CanFetch, Write};
-use core::{events::Events, SysResult};
+use log::info;
+use core::{event::Events, SysResult};
 use vek::Vec2;
 
 #[derive(Debug, Clone, Copy)]
@@ -82,7 +83,7 @@ pub fn game_input_system(mut system: GameInputSystem) -> SysResult {
         (KeyCode::ShiftLeft, GameInput::Sneak),
         (KeyCode::F12, GameInput::ToggleWireframe),
     ];
-
+info!("Got {} events", system.events.events.len());
     for (key, input) in INPUT_MAPPING.iter() {
         if system.input.pressed(*key) {
             system.events.send(WindowEvent::KeyPress(*input, true));

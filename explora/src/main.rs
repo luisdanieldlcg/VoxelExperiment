@@ -2,7 +2,7 @@ pub mod scene;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use core::{clock::Clock, events::Events, SysResult};
+use core::{clock::Clock, event::Events, SysResult};
 use explora::{
     block::{self, BlockMap},
     camera::Camera,
@@ -43,16 +43,17 @@ fn setup_ecs(
     renderer: Renderer,
     blocks: BlockMap,
 ) -> apecs::anyhow::Result<()> {
+
     client
         .state_mut()
         .ecs_mut()
         .with_default_resource::<Input>()?
-        .with_default_resource::<Events<WindowEvent>>()?
         .with_default_resource::<TerrainRenderData>()?
         .with_default_resource::<GpuGlobals>()?
         .with_resource(renderer)?
         .with_resource(blocks)?
         .with_system("setup", setup)?
+        .with_system_barrier()
         .with_system("terrain_setup", explora::terrain::terrain_system_setup)?
         .with_system_barrier()
         .with_system("game_input", input::game_input_system)?
@@ -60,6 +61,8 @@ fn setup_ecs(
         .with_system("scene_update", scene_update_system)?
         .with_system_barrier()
         .with_system("render", render::render_system)?;
+
+    client.state_mut().with_event::<WindowEvent>("window_event");
 
     let names = client.state_mut().ecs_mut().get_sync_schedule_names();
     log::debug!("System schedule order:");

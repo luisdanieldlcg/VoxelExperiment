@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::resources::{DeltaTime, GameMode, TerrainMap};
+use crate::{
+    event::{Event, Events},
+    resources::{DeltaTime, GameMode, TerrainMap},
+};
 
 pub struct State {
     world: apecs::World,
@@ -29,6 +32,17 @@ impl State {
         self.resource_mut::<DeltaTime>().0 = dt.as_secs_f32();
         if let Err(e) = self.world.tick() {
             log::error!("{}", e);
+        }
+    }
+
+    pub fn with_event<E: Event>(&mut self, name: &str) {
+        match self.world.set_resource::<Events<E>>(Events::default()) {
+            Ok(world) => {
+                self.world
+                    .with_system(name, super::event::event_update_system::<E>)
+                    .unwrap();
+            },
+            Err(e) => log::error!("Failed to add event system for {}: {}", name, e),
         }
     }
 

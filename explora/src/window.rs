@@ -1,3 +1,5 @@
+use core::event::Event;
+
 use crate::{error::Error, input::GameInput};
 
 use vek::Vec2;
