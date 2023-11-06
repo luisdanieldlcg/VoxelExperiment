@@ -1,7 +1,32 @@
 use apecs::{CanFetch, Write};
-use log::info;
 use core::{event::Events, SysResult};
 use vek::Vec2;
+
+#[derive(Debug, Clone, Copy)]
+pub struct KeyboardInput {
+    pub scan_code: u32,
+    pub key_code: Option<KeyCode>,
+    pub state: bool,
+}
+
+#[derive(CanFetch)]
+pub struct KeyboardInputSystem {
+    events: Write<Events<KeyboardInput>>,
+    input: Write<Input>,
+}
+
+pub fn keyboard_input_system(mut state: KeyboardInputSystem) -> SysResult {
+    state.input.update();
+    for event in state.events.events.iter() {
+        if let Some(key_code) = event.key_code {
+            match event.state {
+                true => state.input.press(key_code),
+                false => state.input.release(key_code),
+            }
+        }
+    }
+    ok()
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum GameInput {
@@ -12,12 +37,13 @@ pub enum GameInput {
     Jump,
     Sneak,
     ToggleWireframe,
+    ToggleCursor,
 }
 
 /// Input struct that holds the state of the keyboard and mouse.
 pub struct Input {
-    // TODO: consider tracking key releases, as false here just means the key is no longer pressed.
-    pub keys: [bool; 256],
+    pub pressed: [bool; 256],
+    pub just_pressed: [bool; 256],
     pub buttons: [bool; 128],
     pub cursor_delta: Vec2<f32>,
 }
@@ -25,7 +51,8 @@ pub struct Input {
 impl Default for Input {
     fn default() -> Self {
         Self {
-            keys: [false; 256],
+            pressed: [false; 256],
+            just_pressed: [false; 256],
             buttons: [false; 128],
             cursor_delta: Vec2::zero(),
         }
@@ -36,15 +63,26 @@ type KeyCode = winit::keyboard::KeyCode;
 
 impl Input {
     pub fn press(&mut self, input: KeyCode) {
-        self.keys[input as usize] = true;
+        if !self.pressed[input as usize] {
+            self.just_pressed[input as usize] = true;
+        }
+        self.pressed[input as usize] = true;
     }
 
     pub fn pressed(&self, input: KeyCode) -> bool {
-        self.keys[input as usize]
+        self.pressed[input as usize]
     }
 
     pub fn release(&mut self, input: KeyCode) {
-        self.keys[input as usize] = false;
+        self.pressed[input as usize] = false;
+    }
+
+    pub fn just_pressed(&self, input: KeyCode) -> bool {
+        self.just_pressed[input as usize]
+    }
+
+    pub fn update(&mut self) {
+        self.just_pressed = [false; 256];
     }
 
     pub fn is_button_down(&self, button: winit::event::MouseButton) -> bool {
@@ -73,30 +111,25 @@ pub struct GameInputSystem {
     input: Write<Input>,
 }
 
+const INPUT_MAPPING: [(KeyCode, GameInput); 8] = [
+    (KeyCode::KeyW, GameInput::MoveForward),
+    (KeyCode::KeyS, GameInput::MoveBackward),
+    (KeyCode::KeyA, GameInput::MoveLeft),
+    (KeyCode::KeyD, GameInput::MoveRight),
+    (KeyCode::Space, GameInput::Jump),
+    (KeyCode::ShiftLeft, GameInput::Sneak),
+    (KeyCode::F1, GameInput::ToggleCursor),
+    (KeyCode::F2, GameInput::ToggleWireframe),
+];
+
 pub fn game_input_system(mut system: GameInputSystem) -> SysResult {
-    const INPUT_MAPPING: [(KeyCode, GameInput); 7] = [
-        (KeyCode::KeyW, GameInput::MoveForward),
-        (KeyCode::KeyS, GameInput::MoveBackward),
-        (KeyCode::KeyA, GameInput::MoveLeft),
-        (KeyCode::KeyD, GameInput::MoveRight),
-        (KeyCode::Space, GameInput::Jump),
-        (KeyCode::ShiftLeft, GameInput::Sneak),
-        (KeyCode::F12, GameInput::ToggleWireframe),
-    ];
-info!("Got {} events", system.events.events.len());
     for (key, input) in INPUT_MAPPING.iter() {
-        if system.input.pressed(*key) {
-            system.events.send(WindowEvent::KeyPress(*input, true));
+        if system.input.just_pressed(*key) {
+            system.events.send(WindowEvent::JustPressed(*input));
         }
-        // TODO: send key releases as well.
+        if system.input.pressed(*key) {
+            system.events.send(WindowEvent::KeyPress(*input));
+        }
     }
-
     ok()
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_input_update() {}
 }

@@ -2,14 +2,13 @@ pub mod scene;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use core::{clock::Clock, event::Events, SysResult};
+use core::SysResult;
 use explora::{
-    block::{self, BlockMap},
+    block,
     camera::Camera,
     client::Client,
-    input::{self, Input},
+    input::{self, Input, KeyboardInput},
     window::{Window, WindowEvent},
-    App,
 };
 use render::{GpuGlobals, Renderer, TerrainRenderData};
 
@@ -22,27 +21,14 @@ fn main() {
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),
     });
-    let Ok(renderer) = Renderer::new(window.platform()) else {
-        // TODO: proper error handling
-        panic!("Failed to create renderer");
-    };
-
-    window.trap_cursor(false);
-    let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
-    let clock = Clock::default();
-    let app = App { window, clock };
     let mut client = Client::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1234));
-    // register game-specific state
-    setup_ecs(&mut client, renderer, block_map).expect("Failed to setup game state");
-
-    explora::run::run(event_loop, app, client);
+    setup_ecs(&mut client, window).expect("Failed to setup game state");
+    explora::run::run(event_loop, client);
 }
 
-fn setup_ecs(
-    client: &mut Client,
-    renderer: Renderer,
-    blocks: BlockMap,
-) -> apecs::anyhow::Result<()> {
+fn setup_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<()> {
+    let renderer = Renderer::new(window.platform()).expect("Failed to create renderer");
+    let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
 
     client
         .state_mut()
@@ -50,11 +36,14 @@ fn setup_ecs(
         .with_default_resource::<Input>()?
         .with_default_resource::<TerrainRenderData>()?
         .with_default_resource::<GpuGlobals>()?
+        .with_resource(window)?
         .with_resource(renderer)?
-        .with_resource(blocks)?
+        .with_resource(block_map)?
         .with_system("setup", setup)?
         .with_system_barrier()
         .with_system("terrain_setup", explora::terrain::terrain_system_setup)?
+        .with_system_barrier()
+        .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
         .with_system("game_input", input::game_input_system)?
         .with_system_barrier()
@@ -62,7 +51,10 @@ fn setup_ecs(
         .with_system_barrier()
         .with_system("render", render::render_system)?;
 
-    client.state_mut().with_event::<WindowEvent>("window_event");
+    client
+        .state_mut()
+        .with_event::<WindowEvent>("window_event")
+        .with_event::<KeyboardInput>("keyboard_input_event");
 
     let names = client.state_mut().ecs_mut().get_sync_schedule_names();
     log::debug!("System schedule order:");
@@ -72,12 +64,22 @@ fn setup_ecs(
     Ok(())
 }
 
-use apecs::{end, Entities, NoDefault, Write};
+use apecs::*;
 use scene::scene_update_system;
 
-fn setup((mut entities, _): (Write<Entities>, Write<Renderer, NoDefault>)) -> SysResult {
-    let mut player = entities.create();
-    // TODO: grab window / render surface size
-    player.insert_component(Camera::new(1920.0 / 1080.0));
+#[derive(CanFetch)]
+struct SetupSystem {
+    entities: Write<Entities>,
+    window: Write<Window, NoDefault>,
+}
+
+fn setup(mut sys: SetupSystem) -> SysResult {
+    sys.window.grab_cursor(true);
+    let mut player = sys.entities.create();
+    let window_size = sys.window.inner_size().map(|x| x as f32);
+    let aspect_ratio = window_size.x / window_size.y;
+    let mut camera = Camera::new(aspect_ratio);
+    camera.rotate(0.0, 0.0);
+    player.insert_component(camera);
     end()
 }

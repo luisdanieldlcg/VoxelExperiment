@@ -1,5 +1,3 @@
-use core::clock::Clock;
-
 pub mod block;
 pub mod camera;
 pub mod client;
@@ -9,8 +7,3 @@ pub mod mesh;
 pub mod run;
 pub mod terrain;
 pub mod window;
-
-pub struct App {
-    pub window: window::Window,
-    pub clock: Clock,
-}

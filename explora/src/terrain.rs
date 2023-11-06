@@ -38,7 +38,7 @@ pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
     }
     *system.terrain_render_data = TerrainRenderData {
         buffer: Some(system.renderer.create_vertex_buffer(&mesh_work)),
-        wireframe_enabled: false,
+        wireframe: false,
     };
     end()
 }

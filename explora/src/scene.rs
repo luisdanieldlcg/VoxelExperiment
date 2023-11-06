@@ -1,7 +1,12 @@
 use core::{event::Events, resources::DeltaTime, SysResult};
-use explora::{camera::Camera, input::GameInput, window::WindowEvent};
+use explora::{
+    camera::Camera,
+    input::GameInput,
+    window::{Window, WindowEvent},
+};
 
 use apecs::*;
+
 use render::{GpuGlobals, TerrainRenderData};
 use vek::Vec3;
 
@@ -12,6 +17,7 @@ pub struct SceneSystem {
     delta: Read<DeltaTime>,
     globals: Write<GpuGlobals>,
     terrain_render_data: Write<TerrainRenderData>,
+    window: Write<Window, NoDefault>,
 }
 
 pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
@@ -27,11 +33,11 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
             },
             WindowEvent::CursorMove(cursor) => {
                 for camera in scene.camera.query().iter_mut() {
-                    camera.rotate(cursor.x, cursor.y, scene.delta.0);
+                    camera.rotate(cursor.x, cursor.y);
                 }
             },
-            WindowEvent::KeyPress(input, state) => {
-                let val = *state as i32 as f32;
+            WindowEvent::KeyPress(input) => {
+                let val = 1.0;
                 match input {
                     GameInput::MoveForward => {
                         dir.z += val;
@@ -51,12 +57,15 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
                     GameInput::Sneak => {
                         dir.y -= val;
                     },
-                    GameInput::ToggleWireframe => {
-                        if *state {
-                            scene.terrain_render_data.wireframe_enabled =
-                                !scene.terrain_render_data.wireframe_enabled;
-                        }
-                    },
+                    _ => (),
+                }
+            },
+            WindowEvent::JustPressed(key) => {
+                if let GameInput::ToggleWireframe = key {
+                    scene.terrain_render_data.wireframe = !scene.terrain_render_data.wireframe;
+                }
+                if let GameInput::ToggleCursor = key {
+                    scene.window.toggle_cursor();
                 }
             },
         }

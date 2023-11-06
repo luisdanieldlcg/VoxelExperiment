@@ -1,5 +1,3 @@
-use core::event::Event;
-
 use crate::{error::Error, input::GameInput};
 
 use vek::Vec2;
@@ -15,11 +13,18 @@ pub enum WindowEvent {
     /// The cursor has been moved.
     CursorMove(Vec2<f32>),
     /// A game key has been pressed.
-    KeyPress(GameInput, bool),
+    ///
+    /// This is true for every frame that the key is pressed.
+    KeyPress(GameInput),
+    /// A game key has just been pressed.
+    ///
+    /// This is only true for the first frame that the key is pressed.
+    JustPressed(GameInput),
 }
 
 pub struct Window {
     platform: winit::window::Window,
+    cursor_grabbed: bool,
 }
 
 impl Window {
@@ -30,10 +35,14 @@ impl Window {
             .with_inner_size(winit::dpi::PhysicalSize::new(1920, 1080))
             .build(&event_loop)?;
 
-        let this = Self { platform };
+        let this = Self {
+            platform,
+            cursor_grabbed: true,
+        };
         Ok((this, event_loop))
     }
-    pub fn trap_cursor(&self, value: bool) {
+
+    pub fn grab_cursor(&mut self, value: bool) {
         self.platform.set_cursor_visible(!value);
         let mode = if value {
             winit::window::CursorGrabMode::Locked
@@ -43,6 +52,16 @@ impl Window {
         if let Err(e) = self.platform.set_cursor_grab(mode) {
             log::warn!("Could not grab cursor in {:?} mode ({})", mode, e);
         }
+        self.cursor_grabbed = value;
+    }
+
+    pub fn inner_size(&self) -> Vec2<u32> {
+        let size = self.platform.inner_size();
+        Vec2::new(size.width, size.height)
+    }
+
+    pub fn toggle_cursor(&mut self) {
+        self.grab_cursor(!self.cursor_grabbed);
     }
 
     pub fn platform(&self) -> &winit::window::Window {

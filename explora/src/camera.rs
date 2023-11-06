@@ -1,4 +1,4 @@
-use core::chunk::Chunk;
+
 
 use vek::{Mat4, Vec2, Vec3};
 
@@ -38,7 +38,7 @@ impl Camera {
         Matrices { view, proj }
     }
 
-    pub fn rotate(&mut self, dx: f32, dy: f32, _dt: f32) {
+    pub fn rotate(&mut self, dx: f32, dy: f32) {
         let sensitivity = 0.1;
         let offset_x = dx * sensitivity;
         let offset_y = dy * sensitivity;

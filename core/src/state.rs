@@ -35,15 +35,19 @@ impl State {
         }
     }
 
-    pub fn with_event<E: Event>(&mut self, name: &str) {
+    pub fn with_event<E: Event>(&mut self, name: &str) -> &mut Self {
         match self.world.set_resource::<Events<E>>(Events::default()) {
             Ok(world) => {
                 self.world
-                    .with_system(name, super::event::event_update_system::<E>)
+                    .with_system(
+                        format!("{}-update", name),
+                        super::event::event_update_system::<E>,
+                    )
                     .unwrap();
             },
             Err(e) => log::error!("Failed to add event system for {}: {}", name, e),
         }
+        self
     }
 
     pub fn resource<R: apecs::IsResource>(&self) -> &R {

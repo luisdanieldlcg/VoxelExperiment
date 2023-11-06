@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum RenderError {
     DeviceRequest(wgpu::RequestDeviceError),
     AdapterNotFound,

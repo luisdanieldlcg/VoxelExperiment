@@ -15,7 +15,7 @@ use vertex::TerrainVertex;
 #[derive(Default)]
 pub struct TerrainRenderData {
     pub buffer: Option<Buffer<TerrainVertex>>,
-    pub wireframe_enabled: bool,
+    pub wireframe: bool,
 }
 
 pub trait Vertex: bytemuck::Pod {
@@ -289,7 +289,7 @@ pub fn render_system(
         timestamp_writes: None,
     });
 
-    if terrain_render_data.wireframe_enabled {
+    if terrain_render_data.wireframe {
         render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
     } else {
         render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
