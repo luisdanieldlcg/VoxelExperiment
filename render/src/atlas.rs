@@ -37,22 +37,7 @@ impl BlockAtlas {
         textures_path: P,
         tile_width: u32,
         tile_height: u32,
-    ) -> Self {
-        let Ok(dir) = std::fs::read_dir(textures_path.as_ref()) else {
-            panic!(
-                "The directory `{}` does not exists.",
-                textures_path.as_ref().display()
-            );
-        };
-
-        let dir_iter = dir.into_iter().filter_map(|entry| match entry {
-            Ok(entry) => Some(entry),
-            Err(err) => {
-                debug!("Failed to read a directory entry: {}", err);
-                None
-            },
-        });
-
+    ) -> std::io::Result<Self> {
         let texture_width = 512;
         let texture_height = 512;
 
@@ -66,9 +51,9 @@ impl BlockAtlas {
         let mut tiles = vec![];
         let mut id = 0;
 
-        for entry in dir_iter {
+        for entry in std::fs::read_dir(textures_path.as_ref())? {
+            let entry = entry?;
             let path = entry.path();
-
             if !path.is_file() || path.extension().unwrap_or_default() != "png" {
                 warn!("Skipping non-png file: {}", path.display());
                 continue;
@@ -131,10 +116,10 @@ impl BlockAtlas {
         let atlas_texture =
             crate::Texture::new(device, queue, image::DynamicImage::ImageRgba8(atlas_buffer));
 
-        Self {
+        Ok(Self {
             texture: atlas_texture,
             tiles,
             size: vek::Extent2::new(texture_width, texture_height),
-        }
+        })
     }
 }

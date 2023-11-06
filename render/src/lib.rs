@@ -12,6 +12,19 @@ use texture::Texture;
 use vek::Mat4;
 use vertex::TerrainVertex;
 
+#[derive(Debug, Clone, Default)]
+pub struct EguiContext(egui::Context);
+
+impl EguiContext {
+    pub fn get(&self) -> &egui::Context {
+        &self.0
+    }
+
+    pub fn get_mut(&mut self) -> &mut egui::Context {
+        &mut self.0
+    }
+}
+
 #[derive(Default)]
 pub struct TerrainRenderData {
     pub buffer: Option<Buffer<TerrainVertex>>,
@@ -62,15 +75,33 @@ pub struct Renderer {
     core_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
     block_atlas: BlockAtlas,
+    egui_renderer: egui_wgpu::Renderer,
+    // For debugging
+    pub graphics_backend: String,
 }
 
 impl Renderer {
     pub fn new(window: &winit::window::Window) -> Result<Self, error::RenderError> {
+        let backends = std::env::var("WGPU_BACKEND")
+            .ok()
+            .and_then(|env| match env.to_lowercase().as_str() {
+                "vulkan" => Some(wgpu::Backends::VULKAN),
+                "metal" => Some(wgpu::Backends::METAL),
+                "dx12" => Some(wgpu::Backends::DX12),
+                "dx11" => Some(wgpu::Backends::DX11),
+                "opengl" => Some(wgpu::Backends::GL),
+                "primary" => Some(wgpu::Backends::PRIMARY),
+                "secondary" => Some(wgpu::Backends::SECONDARY),
+                "all" => Some(wgpu::Backends::all()),
+                _ => None,
+            })
+            .unwrap_or(wgpu::Backends::PRIMARY);
+
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            flags: wgpu::InstanceFlags::default(),
+            backends,
+            // flags: wgpu::InstanceFlags::default(),
             dx12_shader_compiler: wgpu::Dx12Compiler::default(),
-            gles_minor_version: wgpu::Gles3MinorVersion::default(),
+            // gles_minor_version: wgpu::Gles3MinorVersion::default(),
         });
 
         let surface = unsafe { instance.create_surface(window) }.unwrap();
@@ -80,6 +111,16 @@ impl Renderer {
             force_fallback_adapter: false,
         }))
         .ok_or(error::RenderError::AdapterNotFound)?;
+
+        let adapter_info = adapter.get_info();
+
+        log::info!(
+            "Selected graphics device: {} {} {:?} {:?}",
+            adapter_info.name,
+            adapter_info.vendor,
+            adapter_info.backend,
+            adapter_info.device_type
+        );
 
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
@@ -120,7 +161,14 @@ impl Renderer {
             &[GpuGlobals::default()],
         );
 
-        let block_atlas = BlockAtlas::create(&device, &queue, "assets/textures/block", 16, 16);
+        let block_atlas = match BlockAtlas::create(&device, &queue, "assets/textures/block", 16, 16)
+        {
+            Ok(atlas) => atlas,
+            Err(err) => {
+                panic!("Failed to create block atlas: {}", err);
+                // TODO: return custom error? (e.g RendererError::BlockAtlasCreationFailed)
+            },
+        };
 
         let core_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -152,6 +200,8 @@ impl Renderer {
         };
         let depth_texture = Texture::depth(&device, config.width, config.height);
         let terrain_index_buffer = compute_terrain_indices(&device, 5000);
+        let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1);
+        let graphics_backend = format!("{:?}", adapter_info.backend);
         Ok(Self {
             surface,
             device,
@@ -163,6 +213,8 @@ impl Renderer {
             pipelines,
             depth_texture,
             block_atlas,
+            egui_renderer,
+            graphics_backend,
         })
     }
 
@@ -190,6 +242,30 @@ impl Renderer {
 
     pub fn block_atlas(&self) -> &atlas::BlockAtlas {
         &self.block_atlas
+    }
+
+    pub fn update_ui_texture(
+        &mut self,
+        id: egui::TextureId,
+        image_delta: &egui::epaint::ImageDelta,
+    ) {
+        self.egui_renderer
+            .update_texture(&self.device, &self.queue, id, image_delta);
+    }
+
+    pub fn update_ui_buffers(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        paint_jobs: &[egui::epaint::ClippedPrimitive],
+        screen_descriptor: &egui_wgpu::renderer::ScreenDescriptor,
+    ) {
+        self.egui_renderer.update_buffers(
+            &self.device,
+            &self.queue,
+            encoder,
+            paint_jobs,
+            screen_descriptor,
+        );
     }
 
     pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
@@ -225,9 +301,10 @@ impl Renderer {
 use apecs::*;
 
 pub fn render_system(
-    (renderer, terrain_render_data): (
-        Read<Renderer, NoDefault>,
+    (mut renderer, terrain_render_data, mut egui_context): (
+        Write<Renderer, NoDefault>,
         Read<TerrainRenderData, NoDefault>,
+        Write<EguiContext>,
     ),
 ) -> apecs::anyhow::Result<ShouldContinue> {
     let surface = match renderer.surface.get_current_texture() {
@@ -274,21 +351,22 @@ pub fn render_system(
                     b: 0.3,
                     a: 1.0,
                 }),
-                store: wgpu::StoreOp::Store,
+                // store: wgpu::StoreOp::Store,
+                store: true,
             },
         })],
         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
             view: &renderer.depth_texture.view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
-                store: wgpu::StoreOp::Store,
+                // store: wgpu::StoreOp::Store,
+                store: true,
             }),
             stencil_ops: None,
         }),
-        occlusion_query_set: None,
-        timestamp_writes: None,
+        // occlusion_query_set: None,
+        // timestamp_writes: None,
     });
-
     if terrain_render_data.wireframe {
         render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
     } else {
@@ -305,6 +383,42 @@ pub fn render_system(
     render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
 
     drop(render_pass);
+
+    let output = egui_context.get_mut().end_frame();
+    let paint_jobs = egui_context.get_mut().tessellate(output.shapes);
+
+    for (id, delta) in output.textures_delta.set {
+        renderer.update_ui_texture(id, &delta);
+    }
+
+    let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+        size_in_pixels: [renderer.config.width, renderer.config.height],
+        pixels_per_point: 1.0, // TODO: get this from winit
+    };
+
+    renderer.update_ui_buffers(&mut encoder, paint_jobs.as_slice(), &screen_descriptor);
+
+    let mut egui_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("Egui Render Pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: &view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                // store: wgpu::StoreOp::Store,
+                store: true,
+            },
+        })],
+        depth_stencil_attachment: None,
+        // occlusion_query_set: None,
+        // timestamp_writes: None,
+    });
+
+    renderer
+        .egui_renderer
+        .render(&mut egui_render_pass, &paint_jobs, &screen_descriptor);
+    drop(egui_render_pass);
+
     renderer.queue.submit(Some(encoder.finish()));
     surface.present();
 

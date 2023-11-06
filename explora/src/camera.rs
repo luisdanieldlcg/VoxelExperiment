@@ -1,5 +1,3 @@
-
-
 use vek::{Mat4, Vec2, Vec3};
 
 const Z_NEAR: f32 = 0.1;
@@ -14,10 +12,12 @@ pub struct Camera {
     pos: Vec3<f32>,
     target: Vec3<f32>,
     aspect: f32,
-    fov: f32,
+    pub fov: f32,
     /// The rotation of the camera in radians.
     /// The x component is the yaw, the y component is the pitch.
     rot: Vec2<f32>,
+    pub speed: f32,
+    pub sensitivity: f32,
 }
 
 impl Camera {
@@ -28,6 +28,8 @@ impl Camera {
             aspect,
             fov: 70.0,
             rot: Vec2::new(-46.0, 0.0),
+            speed: 20.0,
+            sensitivity: 0.1,
         }
     }
 
@@ -39,7 +41,7 @@ impl Camera {
     }
 
     pub fn rotate(&mut self, dx: f32, dy: f32) {
-        let sensitivity = 0.1;
+        let sensitivity = self.sensitivity;
         let offset_x = dx * sensitivity;
         let offset_y = dy * sensitivity;
 
@@ -68,7 +70,7 @@ impl Camera {
     pub fn update(&mut self, dt: f32, dir: Vec3<f32>) {
         let forward = self.forward();
         let right = self.right();
-        let speed = 20.0;
+        let speed = self.speed;
         let dx = right * -dir.x * speed * dt;
         let dy = Vec3::unit_y() * dir.y * speed * dt;
         let dz = forward * dir.z * speed * dt;
@@ -79,18 +81,22 @@ impl Camera {
         self.aspect = aspect;
     }
 
-    pub fn camera_target(&self) -> &str {
+    pub fn orientation(&self) -> &str {
         let (x, y, z) = self.target.map(|f| f.abs()).into_tuple();
         if x >= y && x >= z {
-            return if self.target.x > 0.0 { "+X" } else { "-X" };
+            return if self.target.x > 0.0 { "West" } else { "East" };
         }
         if y >= z {
-            return if self.target.y > 0.0 { "+Y" } else { "-Y" };
+            return if self.target.y > 0.0 { "Up" } else { "Down" };
         }
         if self.target.z > 0.0 {
-            "+Z"
+            "North"
         } else {
-            "-Z"
+            "South"
         }
+    }
+
+    pub fn pos(&self) -> Vec3<f32> {
+        self.pos
     }
 }

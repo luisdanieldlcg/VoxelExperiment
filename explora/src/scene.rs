@@ -1,14 +1,15 @@
 use core::{event::Events, resources::DeltaTime, SysResult};
-use explora::{
+
+use apecs::*;
+
+use render::{GpuGlobals, Renderer, TerrainRenderData};
+use vek::Vec3;
+
+use crate::{
     camera::Camera,
     input::GameInput,
     window::{Window, WindowEvent},
 };
-
-use apecs::*;
-
-use render::{GpuGlobals, TerrainRenderData};
-use vek::Vec3;
 
 #[derive(CanFetch)]
 pub struct SceneSystem {
@@ -18,6 +19,7 @@ pub struct SceneSystem {
     globals: Write<GpuGlobals>,
     terrain_render_data: Write<TerrainRenderData>,
     window: Write<Window, NoDefault>,
+    renderer: Write<Renderer, NoDefault>,
 }
 
 pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
@@ -76,6 +78,7 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
         camera.update(scene.delta.0, dir);
         let matrices = camera.build_matrices();
         *scene.globals = GpuGlobals::new(matrices.view, matrices.proj);
+        scene.renderer.write_globals(*scene.globals);
     }
     ok()
 }

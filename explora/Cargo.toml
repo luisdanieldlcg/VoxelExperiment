@@ -15,5 +15,7 @@ toml = { workspace = true }
 serde = { workspace = true }
 noise = { workspace = true }
 env_logger = "0.10.0"
-winit = "0.29.2"
+winit = "0.28.7"
 rand = "0.8.5"
+egui = "0.23.0"
+egui-winit = "0.23.0"

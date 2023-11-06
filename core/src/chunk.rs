@@ -42,26 +42,36 @@ impl Chunk {
                         None => continue,
                     };
 
-                    let noise_x = (world_x + x as f64) / 1000.0;
-                    let noise_z = (world_z + z as f64) / 1000.0;
+                    let noise_x = (world_x + x as f64) / 60.0;
+                    let noise_z = (world_z + z as f64) / 52.0;
                     let height = compute_height(generator, noise_x, noise_z);
 
                     let offset = 700.0;
                     let noise_x = (world_x + x as f64) / offset;
                     let noise_z = (world_z + z as f64) / offset;
                     let stone_height = compute_height(generator, noise_x, noise_z);
-                    let stone_height = ((stone_height as f32) * 0.7) as i32;
-                    match local_pos.y.cmp(&height) {
-                        Ordering::Less => {
-                            if local_pos.y < stone_height {
-                                blocks[index] = BlockId::Stone;
-                            } else {
-                                blocks[index] = BlockId::Dirt;
-                            }
-                        },
-                        Ordering::Equal => blocks[index] = BlockId::Grass,
-                        Ordering::Greater => blocks[index] = BlockId::Air,
+                    let stone_height = ((stone_height as f32) * 0.7) as i32 + generator.get([x as f64 / 100.0, y as f64 / 100.0]) as i32;
+
+
+                    let y = y as i32;
+
+                    let block = if y == height {
+                        BlockId::Grass
+                    } else if y < height && y > stone_height {
+                        BlockId::Dirt
+                    } else if y < stone_height {
+                        BlockId::Stone
+                    } else {
+                        BlockId::Air
+                    };
+
+
+                    blocks[index] = block;
+
+                    if y == Chunk::SIZE.y as i32 - 1 && matches!(block, BlockId::Dirt) {
+                        blocks[index] = BlockId::Grass;
                     }
+
                 }
             }
         }

@@ -38,6 +38,6 @@ impl Client {
 
 impl Drop for Client {
     fn drop(&mut self) {
-        self.connection.send(ClientPacket::Disconnect).unwrap();
+        // self.connection.send(ClientPacket::Disconnect).unwrap();
     }
 }

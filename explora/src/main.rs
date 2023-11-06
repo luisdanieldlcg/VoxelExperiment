@@ -1,13 +1,13 @@
-pub mod scene;
-
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use core::SysResult;
+use core::{clock::Clock, SysResult};
 use explora::{
     block,
     camera::Camera,
     client::Client,
     input::{self, Input, KeyboardInput},
+    scene,
+    ui::EguiInput,
     window::{Window, WindowEvent},
 };
 use render::{GpuGlobals, Renderer, TerrainRenderData};
@@ -29,13 +29,14 @@ fn main() {
 fn setup_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<()> {
     let renderer = Renderer::new(window.platform()).expect("Failed to create renderer");
     let block_map = block::load_blocks("assets/blocks", &renderer.block_atlas().tiles);
-
     client
         .state_mut()
         .ecs_mut()
+        .with_default_resource::<Clock>()?
         .with_default_resource::<Input>()?
         .with_default_resource::<TerrainRenderData>()?
         .with_default_resource::<GpuGlobals>()?
+        .with_default_resource::<EguiInput>()?
         .with_resource(window)?
         .with_resource(renderer)?
         .with_resource(block_map)?
@@ -47,8 +48,14 @@ fn setup_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<()> {
         .with_system_barrier()
         .with_system("game_input", input::game_input_system)?
         .with_system_barrier()
-        .with_system("scene_update", scene_update_system)?
+        .with_system("scene_update", scene::scene_update_system)?
         .with_system_barrier()
+        .with_system_with_dependencies(
+            "egui_debug_render",
+            explora::ui::egui_debug_render_system,
+            &[],
+            &["render"],
+        )?
         .with_system("render", render::render_system)?;
 
     client
@@ -65,7 +72,6 @@ fn setup_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<()> {
 }
 
 use apecs::*;
-use scene::scene_update_system;
 
 #[derive(CanFetch)]
 struct SetupSystem {

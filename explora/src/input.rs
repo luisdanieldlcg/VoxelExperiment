@@ -59,7 +59,8 @@ impl Default for Input {
     }
 }
 
-type KeyCode = winit::keyboard::KeyCode;
+// type KeyCode = winit::keyboard::KeyCode;
+type KeyCode = winit::event::VirtualKeyCode;
 
 impl Input {
     pub fn press(&mut self, input: KeyCode) {
@@ -90,8 +91,8 @@ impl Input {
             winit::event::MouseButton::Left => self.buttons[0],
             winit::event::MouseButton::Right => self.buttons[1],
             winit::event::MouseButton::Middle => self.buttons[2],
-            winit::event::MouseButton::Back => self.buttons[3],
-            winit::event::MouseButton::Forward => self.buttons[4],
+            // winit::event::MouseButton::Back => self.buttons[3],
+            // winit::event::MouseButton::Forward => self.buttons[4],
             winit::event::MouseButton::Other(code) => self.buttons[code as usize],
         }
     }
@@ -112,12 +113,12 @@ pub struct GameInputSystem {
 }
 
 const INPUT_MAPPING: [(KeyCode, GameInput); 8] = [
-    (KeyCode::KeyW, GameInput::MoveForward),
-    (KeyCode::KeyS, GameInput::MoveBackward),
-    (KeyCode::KeyA, GameInput::MoveLeft),
-    (KeyCode::KeyD, GameInput::MoveRight),
+    (KeyCode::W, GameInput::MoveForward),
+    (KeyCode::S, GameInput::MoveBackward),
+    (KeyCode::A, GameInput::MoveLeft),
+    (KeyCode::D, GameInput::MoveRight),
     (KeyCode::Space, GameInput::Jump),
-    (KeyCode::ShiftLeft, GameInput::Sneak),
+    (KeyCode::LShift, GameInput::Sneak),
     (KeyCode::F1, GameInput::ToggleCursor),
     (KeyCode::F2, GameInput::ToggleWireframe),
 ];

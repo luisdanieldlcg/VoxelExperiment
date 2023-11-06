@@ -23,4 +23,8 @@ impl Clock {
     pub fn dt(&self) -> Duration {
         self.dt
     }
+
+    pub fn fps(&self) -> f32 {
+        1.0 / self.dt.as_secs_f32()
+    }
 }
