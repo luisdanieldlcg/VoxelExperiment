@@ -3,33 +3,16 @@ pub mod bindings;
 pub mod buffer;
 pub mod error;
 pub mod pipeline;
+pub mod resources;
 pub mod texture;
+pub mod ui;
 pub mod vertex;
 
 use atlas::BlockAtlas;
 use buffer::Buffer;
+use resources::{EguiContext, TerrainRenderData};
 use texture::Texture;
 use vek::Mat4;
-use vertex::TerrainVertex;
-
-#[derive(Debug, Clone, Default)]
-pub struct EguiContext(egui::Context);
-
-impl EguiContext {
-    pub fn get(&self) -> &egui::Context {
-        &self.0
-    }
-
-    pub fn get_mut(&mut self) -> &mut egui::Context {
-        &mut self.0
-    }
-}
-
-#[derive(Default)]
-pub struct TerrainRenderData {
-    pub buffer: Option<Buffer<TerrainVertex>>,
-    pub wireframe: bool,
-}
 
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
@@ -81,7 +64,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(window: &winit::window::Window) -> Result<Self, error::RenderError> {
+    pub fn initialize(window: &winit::window::Window) -> Result<apecs::Plugin, error::RenderError> {
         let backends = std::env::var("WGPU_BACKEND")
             .ok()
             .and_then(|env| match env.to_lowercase().as_str() {
@@ -202,7 +185,8 @@ impl Renderer {
         let terrain_index_buffer = compute_terrain_indices(&device, 5000);
         let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1);
         let graphics_backend = format!("{:?}", adapter_info.backend);
-        Ok(Self {
+
+        let this = Self {
             surface,
             device,
             queue,
@@ -215,7 +199,21 @@ impl Renderer {
             block_atlas,
             egui_renderer,
             graphics_backend,
-        })
+        };
+
+        Ok(Self::setup_ecs_plugin(this))
+    }
+
+    fn setup_ecs_plugin(self) -> apecs::Plugin {
+        apecs::Plugin::default()
+            .with_resource(|_: ()| Ok(self))
+            .with_resource(|_: ()| Ok(GpuGlobals::default()))
+            .with_resource(|_: ()| Ok(TerrainRenderData::default()))
+            .with_resource(|_: ()| Ok(EguiContext::default()))
+            .with_system("pre_render", pre_render_system, &["render"], &[])
+            .with_system("render", render_system, &[], &[])
+            .with_system("ui_render", ui::ui_render_system, &["post_render"], &[])
+            .with_system("post_render", post_render, &[], &[])
     }
 
     pub fn resize(&mut self, new_width: u32, new_height: u32) {
@@ -300,13 +298,24 @@ impl Renderer {
 
 use apecs::*;
 
-pub fn render_system(
-    (mut renderer, terrain_render_data, mut egui_context): (
-        Write<Renderer, NoDefault>,
-        Read<TerrainRenderData, NoDefault>,
-        Write<EguiContext>,
-    ),
-) -> apecs::anyhow::Result<ShouldContinue> {
+struct RenderTexture {
+    surface_tex: wgpu::SurfaceTexture,
+    surface_tex_view: wgpu::TextureView,
+}
+
+struct CommandEncoder {
+    encoder: wgpu::CommandEncoder,
+}
+
+#[derive(CanFetch)]
+struct PreRenderSystem {
+    encoder: Write<Option<CommandEncoder>>,
+    texture: Write<Option<RenderTexture>>,
+    renderer: Read<Renderer, NoDefault>,
+}
+
+fn pre_render_system(mut system: PreRenderSystem) -> apecs::anyhow::Result<ShouldContinue> {
+    let renderer = system.renderer;
     let surface = match renderer.surface.get_current_texture() {
         Ok(t) => t,
         Err(err) => {
@@ -328,21 +337,47 @@ pub fn render_system(
             }
         },
     };
-
     let view = surface
         .texture
         .create_view(&wgpu::TextureViewDescriptor::default());
 
-    let mut encoder = renderer
+    let encoder = renderer
         .device
         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
 
+    let texture = RenderTexture {
+        surface_tex: surface,
+        surface_tex_view: view,
+    };
+
+    let encoder = CommandEncoder { encoder };
+    // update options
+    system.encoder.replace(encoder);
+    system.texture.replace(texture);
+    ok()
+}
+
+#[derive(CanFetch)]
+struct RenderSystem {
+    renderer: Read<Renderer, NoDefault>,
+    terrain_render_data: Read<TerrainRenderData, NoDefault>,
+    texture: Write<Option<RenderTexture>>,
+    encoder: Write<Option<CommandEncoder>>,
+}
+
+/// Sets up the main render pass and draws the terrain
+fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContinue> {
+    let renderer = &system.renderer;
+    // borrow inner option T mutably
+    let texture = system.texture.inner_mut().as_mut().unwrap();
+    let encoder = &mut system.encoder.inner_mut().as_mut().unwrap().encoder;
+
     let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("Render Pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view: &view,
+            view: &texture.surface_tex_view,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -356,7 +391,7 @@ pub fn render_system(
             },
         })],
         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-            view: &renderer.depth_texture.view,
+            view: &system.renderer.depth_texture.view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
                 // store: wgpu::StoreOp::Store,
@@ -367,13 +402,13 @@ pub fn render_system(
         // occlusion_query_set: None,
         // timestamp_writes: None,
     });
-    if terrain_render_data.wireframe {
+    if system.terrain_render_data.wireframe {
         render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
     } else {
         render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
     }
     render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
-    if let Some(buffer) = &terrain_render_data.buffer {
+    if let Some(buffer) = &system.terrain_render_data.buffer {
         render_pass.set_vertex_buffer(0, buffer.slice());
     }
     render_pass.set_index_buffer(
@@ -381,47 +416,28 @@ pub fn render_system(
         wgpu::IndexFormat::Uint32,
     );
     render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
+    ok()
+}
 
-    drop(render_pass);
+#[derive(CanFetch)]
+struct PostRenderSystem {
+    texture: Write<Option<RenderTexture>>,
+    command_encoder: Write<Option<CommandEncoder>>,
+    renderer: Read<Renderer, NoDefault>,
+}
 
-    let output = egui_context.get_mut().end_frame();
-    let paint_jobs = egui_context.get_mut().tessellate(output.shapes);
+fn post_render(mut system: PostRenderSystem) -> apecs::anyhow::Result<ShouldContinue> {
+    let texture = system.texture.inner_mut();
+    let command_encoder = system.command_encoder.inner_mut();
+    let texture = texture.take();
+    let command_encoder = command_encoder.take();
 
-    for (id, delta) in output.textures_delta.set {
-        renderer.update_ui_texture(id, &delta);
+    if let (Some(texture), Some(command_encoder)) = (texture, command_encoder) {
+        let texture = texture.surface_tex;
+        let command_encoder = command_encoder.encoder;
+        system.renderer.queue.submit(Some(command_encoder.finish()));
+        texture.present();
     }
-
-    let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
-        size_in_pixels: [renderer.config.width, renderer.config.height],
-        pixels_per_point: 1.0, // TODO: get this from winit
-    };
-
-    renderer.update_ui_buffers(&mut encoder, paint_jobs.as_slice(), &screen_descriptor);
-
-    let mut egui_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("Egui Render Pass"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view: &view,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Load,
-                // store: wgpu::StoreOp::Store,
-                store: true,
-            },
-        })],
-        depth_stencil_attachment: None,
-        // occlusion_query_set: None,
-        // timestamp_writes: None,
-    });
-
-    renderer
-        .egui_renderer
-        .render(&mut egui_render_pass, &paint_jobs, &screen_descriptor);
-    drop(egui_render_pass);
-
-    renderer.queue.submit(Some(encoder.finish()));
-    surface.present();
-
     ok()
 }
 

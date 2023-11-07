@@ -50,8 +50,8 @@ impl Chunk {
                     let noise_x = (world_x + x as f64) / offset;
                     let noise_z = (world_z + z as f64) / offset;
                     let stone_height = compute_height(generator, noise_x, noise_z);
-                    let stone_height = ((stone_height as f32) * 0.7) as i32 + generator.get([x as f64 / 100.0, y as f64 / 100.0]) as i32;
-
+                    let stone_height = ((stone_height as f32) * 0.7) as i32
+                        + generator.get([x as f64 / 100.0, y as f64 / 100.0]) as i32;
 
                     let y = y as i32;
 
@@ -65,13 +65,11 @@ impl Chunk {
                         BlockId::Air
                     };
 
-
                     blocks[index] = block;
 
                     if y == Chunk::SIZE.y as i32 - 1 && matches!(block, BlockId::Dirt) {
                         blocks[index] = BlockId::Grass;
                     }
-
                 }
             }
         }

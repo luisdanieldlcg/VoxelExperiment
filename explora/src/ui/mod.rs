@@ -1,7 +1,7 @@
 use core::{clock::Clock, SysResult};
 
 use apecs::{NoDefault, Read};
-use render::EguiContext;
+use render::resources::EguiContext;
 use vek::Vec2;
 
 use crate::camera::Camera;

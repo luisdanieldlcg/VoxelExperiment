@@ -1,6 +1,6 @@
 use core::{clock::Clock, event::Events};
 use log::info;
-use render::{EguiContext, Renderer};
+use render::{resources::{EguiContext, EguiConfiguration}, Renderer};
 use vek::Vec2;
 
 use winit::event_loop::EventLoop;
@@ -87,8 +87,11 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                 let clock = client.state_mut().resource_mut::<Clock>();
                 clock.tick();
 
-                // Take winit input before beginning egui frame
                 let window = client.state_mut().resource::<Window>();
+                // let egui_configuration = client.state_mut().resource_mut::<EguiConfiguration>();
+                // egui_configuration.scale_factor = window.platform().scale_factor() as f32;
+
+                // Take winit input before beginning egui frame
                 let raw_input = egui_state.state.take_egui_input(window.platform());
 
                 client

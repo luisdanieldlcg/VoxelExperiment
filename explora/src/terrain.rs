@@ -1,7 +1,8 @@
 use core::{chunk::Chunk, resources::TerrainMap, SysResult};
+use log::info;
 use noise::Perlin;
 use rand::Rng;
-use render::{Renderer, TerrainRenderData};
+use render::{resources::TerrainRenderData, Renderer};
 use vek::Vec2;
 
 use apecs::*;
@@ -22,7 +23,7 @@ pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
     let blocks = system.block_map.inner();
     let seed = rand::thread_rng().gen_range(0..100);
     let noise = Perlin::new(seed);
-    let radius = 12;
+    let radius = 2;
     for x in -radius..radius {
         for z in -radius..radius {
             let pos = Vec2::new(x, z);
@@ -39,6 +40,9 @@ pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
     *system.terrain_render_data = TerrainRenderData {
         buffer: Some(system.renderer.create_vertex_buffer(&mesh_work)),
         wireframe: false,
+        ready: true,
     };
-    end()
+    info!("Terrain system setup complete");
+    return end();
+    ok()
 }
