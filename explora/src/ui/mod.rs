@@ -1,10 +1,10 @@
 use core::{clock::Clock, SysResult};
 
 use apecs::{NoDefault, Read};
-use render::resources::EguiContext;
+use render::resources::{EguiSettings, EguiContext};
 use vek::Vec2;
 
-use crate::camera::Camera;
+use crate::{camera::Camera, window::Window};
 
 pub struct EguiState {
     pub state: egui_winit::State,
@@ -35,15 +35,21 @@ use apecs::*;
 #[derive(CanFetch)]
 pub struct EguiRenderSystem {
     egui_input: Read<EguiInput>,
+    egui_config: Write<EguiSettings>,
     egui_context: Read<EguiContext>,
     clock: Read<Clock>,
     camera: Query<&'static mut Camera>,
     renderer: Read<render::Renderer, NoDefault>,
+    window: Read<Window, NoDefault>,
 }
 // This system must run before the render system
-pub fn egui_debug_render_system(system: EguiRenderSystem) -> SysResult {
+pub fn egui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
     let input = system.egui_input.get();
     system.egui_context.get().begin_frame(input.clone());
+
+    let scale_factor = system.window.platform().scale_factor() as f32;
+
+    *system.egui_config = EguiSettings { scale_factor };
 
     let mut camera = system.camera.query();
     if let Some(player_camera) = camera.find_one(0) {
@@ -51,7 +57,10 @@ pub fn egui_debug_render_system(system: EguiRenderSystem) -> SysResult {
         let mut camera_speed = player_camera.speed;
         let mut camera_sensitivity = player_camera.sensitivity;
         let mut camera_fov = player_camera.fov;
-        egui::Window::new("Debug").show(system.egui_context.get(), |ui| {
+        egui::Window::new("Debug")
+        .default_width(400.0)
+        .default_height(400.0)
+        .show(system.egui_context.get(), |ui| {
             ui.label(format!("FPS: {}", system.clock.fps()));
             ui.separator();
             ui.label(format!("Facing: {}", orientation));

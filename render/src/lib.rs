@@ -213,7 +213,7 @@ impl Renderer {
             .with_system("pre_render", pre_render_system, &["render"], &[])
             .with_system("render", render_system, &[], &[])
             .with_system("ui_render", ui::ui_render_system, &["post_render"], &[])
-            .with_system("post_render", post_render, &[], &[])
+            .with_system("post_render", post_render_system, &[], &[])
     }
 
     pub fn resize(&mut self, new_width: u32, new_height: u32) {
@@ -426,7 +426,7 @@ struct PostRenderSystem {
     renderer: Read<Renderer, NoDefault>,
 }
 
-fn post_render(mut system: PostRenderSystem) -> apecs::anyhow::Result<ShouldContinue> {
+fn post_render_system(mut system: PostRenderSystem) -> apecs::anyhow::Result<ShouldContinue> {
     let texture = system.texture.inner_mut();
     let command_encoder = system.command_encoder.inner_mut();
     let texture = texture.take();

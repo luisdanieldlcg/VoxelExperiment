@@ -1,7 +1,7 @@
 use apecs::{anyhow::Result, *};
 
 use crate::{
-    resources::{EguiConfiguration, EguiContext},
+    resources::{EguiSettings, EguiContext},
     CommandEncoder, RenderTexture, Renderer,
 };
 
@@ -11,7 +11,7 @@ pub struct UiRenderSystem {
     texture: Write<Option<RenderTexture>>,
     renderer: Write<Renderer, NoDefault>,
     egui_context: Write<EguiContext>,
-    egui_configuration: Read<EguiConfiguration>,
+    egui_configuration: Read<EguiSettings>,
 }
 
 pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
@@ -28,7 +28,7 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
 
     let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
         size_in_pixels: [ui.renderer.config.width, ui.renderer.config.height],
-        pixels_per_point: 1.0, // TODO: get this from winit
+        pixels_per_point: ui.egui_configuration.scale_factor,
     };
 
     ui.renderer

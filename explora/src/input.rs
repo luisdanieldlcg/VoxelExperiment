@@ -119,8 +119,8 @@ const INPUT_MAPPING: [(KeyCode, GameInput); 8] = [
     (KeyCode::D, GameInput::MoveRight),
     (KeyCode::Space, GameInput::Jump),
     (KeyCode::LShift, GameInput::Sneak),
-    (KeyCode::F1, GameInput::ToggleCursor),
-    (KeyCode::F2, GameInput::ToggleWireframe),
+    (KeyCode::Period, GameInput::ToggleCursor),
+    (KeyCode::F12, GameInput::ToggleWireframe),
 ];
 
 pub fn game_input_system(mut system: GameInputSystem) -> SysResult {

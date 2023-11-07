@@ -21,6 +21,6 @@ impl EguiContext {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct EguiConfiguration {
+pub struct EguiSettings {
     pub scale_factor: f32,
 }
