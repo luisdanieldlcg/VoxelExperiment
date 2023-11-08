@@ -12,7 +12,7 @@ use atlas::BlockAtlas;
 use buffer::Buffer;
 use resources::{EguiContext, TerrainRenderData};
 use texture::Texture;
-use vek::Mat4;
+use vek::{Mat4, Vec3};
 
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
@@ -26,19 +26,23 @@ pub trait Vertex: bytemuck::Pod {
 pub struct GpuGlobals {
     pub view: [[f32; 4]; 4],
     pub proj: [[f32; 4]; 4],
+    pub sun_pos: [f32; 3],
+    pub enable_lighting: u32,
 }
 
 impl GpuGlobals {
-    pub fn new(view: Mat4<f32>, proj: Mat4<f32>) -> Self {
+    pub fn new(view: Mat4<f32>, proj: Mat4<f32>, sun_pos: Vec3<f32>, lighting: u32) -> Self {
         Self {
             view: view.into_col_arrays(),
             proj: proj.into_col_arrays(),
+            sun_pos: sun_pos.into_array(),
+            enable_lighting: lighting,
         }
     }
 }
 impl Default for GpuGlobals {
     fn default() -> Self {
-        Self::new(Mat4::identity(), Mat4::identity())
+        Self::new(Mat4::identity(), Mat4::identity(), Vec3::zero(), 1)
     }
 }
 
@@ -211,8 +215,13 @@ impl Renderer {
             .with_resource(|_: ()| Ok(TerrainRenderData::default()))
             .with_resource(|_: ()| Ok(EguiContext::default()))
             .with_system("pre_render", pre_render_system, &["render"], &[])
-            .with_system("render", render_system, &[], &[])
-            .with_system("ui_render", ui::ui_render_system, &["post_render"], &[])
+            .with_system("render", render_system, &["egui_debug_render"], &[])
+            .with_system(
+                "ui_render",
+                ui::ui_render_system,
+                &["post_render"],
+                &["egui_debug_render"], // TODO: remove egui_debug_render from here
+            )
             .with_system("post_render", post_render_system, &[], &[])
     }
 

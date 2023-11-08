@@ -1,7 +1,7 @@
 use apecs::{anyhow::Result, *};
 
 use crate::{
-    resources::{EguiSettings, EguiContext},
+    resources::{EguiContext, EguiSettings},
     CommandEncoder, RenderTexture, Renderer,
 };
 

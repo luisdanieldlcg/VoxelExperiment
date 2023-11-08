@@ -1,6 +1,9 @@
 use core::{clock::Clock, event::Events};
 use log::info;
-use render::{resources::{EguiContext, EguiSettings}, Renderer};
+use render::{
+    resources::{EguiContext, EguiSettings},
+    Renderer,
+};
 use vek::Vec2;
 
 use winit::event_loop::EventLoop;
@@ -17,7 +20,9 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
     // event_loop.set_control_flow(ControlFlow::Poll);
     let window = client.state().resource::<Window>().platform();
     let mut egui_state = EguiState::new(window);
-    egui_state.state.set_pixels_per_point(window.scale_factor() as f32);
+    egui_state
+        .state
+        .set_pixels_per_point(window.scale_factor() as f32);
 
     event_loop.run(move |event, _, control| {
         control.set_poll();
@@ -30,7 +35,7 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                 let egui_context = client.state().resource::<EguiContext>();
 
                 let input = egui_state.state.on_event(egui_context.get(), &event);
-                
+
                 if input.consumed {
                     // If the input was consumed by egui, we don't want to process it
                     return;
@@ -50,11 +55,12 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                         },
                         winit::event::WindowEvent::ScaleFactorChanged { .. } => {
                             let size = window.platform().inner_size();
-                            egui_state.state.set_pixels_per_point(window.platform().scale_factor() as f32);
+                            egui_state
+                                .state
+                                .set_pixels_per_point(window.platform().scale_factor() as f32);
 
                             let events = client.state_mut().resource_mut::<Events<WindowEvent>>();
                             events.send(WindowEvent::Resize(Vec2::new(size.width, size.height)));
-
                         },
                         winit::event::WindowEvent::KeyboardInput { input, .. } => {
                             if let Some(key) = input.virtual_keycode {

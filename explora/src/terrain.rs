@@ -23,7 +23,7 @@ pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
     let blocks = system.block_map.inner();
     let seed = rand::thread_rng().gen_range(0..100);
     let noise = Perlin::new(seed);
-    let radius = 2;
+    let radius = 15;
     for x in -radius..radius {
         for z in -radius..radius {
             let pos = Vec2::new(x, z);
@@ -43,6 +43,5 @@ pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
         ready: true,
     };
     info!("Terrain system setup complete");
-    return end();
-    ok()
+    end()
 }

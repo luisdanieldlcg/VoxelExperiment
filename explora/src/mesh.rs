@@ -91,84 +91,111 @@ pub fn create_chunk_mesh(
         let side = block.textures.side;
         // North
         if render_quad(Direction::North) {
+            let normal = Direction::North.vec();
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_x() + Vec3::unit_z(),
                 side,
+                normal,
             ));
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), side));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), side, normal));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_z() + Vec3::unit_y(),
                 side,
+                normal,
             ));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_z() + Vec3::unit_x() + Vec3::unit_y(),
                 side,
+                normal,
             ));
         }
 
         // South
         if render_quad(Direction::South) {
-            vertices.push(TerrainVertex::new(world_pos, side));
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), side));
+            let normal = Direction::South.vec();
+
+            vertices.push(TerrainVertex::new(world_pos, side, normal));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), side, normal));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_x() + Vec3::unit_y(),
                 side,
+                normal,
             ));
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), side));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), side, normal));
         }
 
         // East
         if render_quad(Direction::East) {
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), side));
+            let normal = Direction::East.vec();
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), side, normal));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_x() + Vec3::unit_z(),
                 side,
+                normal,
             ));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_x() + Vec3::unit_z() + Vec3::unit_y(),
                 side,
+                normal,
             ));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_x() + Vec3::unit_y(),
                 side,
+                normal,
             ));
         }
 
         // West
         if render_quad(Direction::West) {
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), side));
-            vertices.push(TerrainVertex::new(world_pos, side));
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), side));
+            let normal = Direction::West.vec();
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), side, normal));
+            vertices.push(TerrainVertex::new(world_pos, side, normal));
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), side, normal));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_z() + Vec3::unit_y(),
                 side,
+                normal,
             ));
         }
         // Bottom
         if render_quad(Direction::Down) {
-            vertices.push(TerrainVertex::new(world_pos, bottom));
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_z(), bottom));
+            let normal = Direction::Down.vec();
+            vertices.push(TerrainVertex::new(world_pos, bottom, normal));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_z(),
+                bottom,
+                normal,
+            ));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_x() + Vec3::unit_z(),
                 bottom,
+                normal,
             ));
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_x(), bottom));
+            vertices.push(TerrainVertex::new(
+                world_pos + Vec3::unit_x(),
+                bottom,
+                normal,
+            ));
         }
 
         // Top
         if render_quad(Direction::Up) {
-            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), top));
+            let normal = Direction::Up.vec();
+            vertices.push(TerrainVertex::new(world_pos + Vec3::unit_y(), top, normal));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_y() + Vec3::unit_x(),
                 top,
+                normal,
             ));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_y() + Vec3::unit_x() + Vec3::unit_z(),
                 top,
+                normal,
             ));
             vertices.push(TerrainVertex::new(
                 world_pos + Vec3::unit_y() + Vec3::unit_z(),
                 top,
+                normal,
             ));
         }
     }

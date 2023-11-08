@@ -42,8 +42,8 @@ impl Chunk {
                         None => continue,
                     };
 
-                    let noise_x = (world_x + x as f64) / 60.0;
-                    let noise_z = (world_z + z as f64) / 52.0;
+                    let noise_x = (world_x + x as f64) / 80.0;
+                    let noise_z = (world_z + z as f64) / 80.0;
                     let height = compute_height(generator, noise_x, noise_z);
 
                     let offset = 700.0;

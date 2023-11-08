@@ -44,7 +44,7 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_system_with_dependencies(
             "egui_debug_render",
             explora::ui::egui_debug_render_system,
-            &["pre_render"],
+            &[],
             &[],
         )?
         .with_system_with_dependencies("setup", setup, &[], &["pre_render"])?

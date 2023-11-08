@@ -67,4 +67,7 @@ impl Window {
     pub fn platform(&self) -> &winit::window::Window {
         &self.platform
     }
+    pub fn cursor_locked(&self) -> bool {
+        self.cursor_grabbed
+    }
 }
