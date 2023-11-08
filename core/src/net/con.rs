@@ -56,7 +56,15 @@ impl<S: Serialize, R: DeserializeOwned> Connection<S, R> {
         Ok(())
     }
 
-    /// Receive a packet from the remote host.
+    pub fn send_to(&self, packet: S, addr: SocketAddr) -> Result<(), NetworkError> {
+        let packet = Self::serialize(&packet);
+        self.socket
+            .send_to(&packet, addr)
+            .map_err(|e| NetworkError::IOError(e.kind()))?;
+        Ok(())
+    }
+
+    /// Receive a packet. This will not block, if there is no packet it will return an error.
     pub fn recv(&self) -> Result<(R, SocketAddr), NetworkError> {
         let mut buf = [0; PACKET_BUFFER_SIZE];
         match self.socket.recv_from(&mut buf) {
@@ -84,9 +92,5 @@ impl<S: Serialize, R: DeserializeOwned> Connection<S, R> {
 #[cfg(test)]
 pub mod tests {
 
-    use super::Connection;
-    enum Packet {
-        Hello,
-    }
     pub fn create_client_server() {}
 }

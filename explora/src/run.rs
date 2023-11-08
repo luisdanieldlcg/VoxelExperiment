@@ -1,9 +1,6 @@
 use core::{clock::Clock, event::Events};
 use log::info;
-use render::{
-    resources::{EguiContext, EguiSettings},
-    Renderer,
-};
+use render::{resources::EguiContext, Renderer};
 use vek::Vec2;
 
 use winit::event_loop::EventLoop;

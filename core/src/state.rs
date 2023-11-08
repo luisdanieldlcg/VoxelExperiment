@@ -1,8 +1,10 @@
 use std::time::Duration;
 
+use log::info;
+
 use crate::{
     event::{Event, Events},
-    resources::{DeltaTime, GameMode, TerrainMap},
+    resources::{DeltaTime, EntityMap, GameMode, GlobalTime, TerrainMap},
 };
 
 pub struct State {
@@ -23,13 +25,17 @@ impl State {
     pub fn new(mode: GameMode) -> apecs::anyhow::Result<Self> {
         let mut world = apecs::World::default();
         world.with_default_resource::<DeltaTime>()?;
+        world.with_default_resource::<GlobalTime>()?;
         world.with_default_resource::<TerrainMap>()?;
+        world.with_default_resource::<EntityMap>()?;
         world.with_resource(mode)?;
         Ok(Self { world })
     }
 
     pub fn tick(&mut self, dt: Duration) {
         self.resource_mut::<DeltaTime>().0 = dt.as_secs_f32();
+        self.resource_mut::<GlobalTime>().0 += dt.as_secs_f64();
+
         if let Err(e) = self.world.tick() {
             log::error!("{}", e);
         }
@@ -72,5 +78,13 @@ impl State {
 
     pub fn ecs_mut(&mut self) -> &mut apecs::World {
         &mut self.world
+    }
+}
+
+pub fn print_system_schedule(world: &mut apecs::World) {
+    let names = world.get_sync_schedule_names();
+    log::debug!("System Schedule:");
+    for (i, system) in names.iter().enumerate() {
+        log::debug!("{}: {:?}", i, system);
     }
 }

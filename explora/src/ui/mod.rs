@@ -45,7 +45,7 @@ pub struct EguiRenderSystem {
     globals: Write<render::GpuGlobals>,
 }
 // This system must run before the render system
-pub fn egui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
+pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
     let input = system.egui_input.get();
     system.egui_context.get().begin_frame(input.clone());
 

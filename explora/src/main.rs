@@ -1,4 +1,7 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    num::NonZeroU32,
+};
 
 use core::{clock::Clock, SysResult};
 use explora::{
@@ -42,13 +45,18 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_system_barrier()
         .with_plugin(render_plugin)?
         .with_system_with_dependencies(
-            "egui_debug_render",
-            explora::ui::egui_debug_render_system,
+            render::SYSTEM_STAGE_UI_DRAW_WIDGETS,
+            explora::ui::ui_debug_render_system,
             &[],
             &[],
         )?
-        .with_system_with_dependencies("setup", setup, &[], &["pre_render"])?
-        .with_system_with_dependencies("terrain_setup", terrain_system_setup, &["pre_render"], &[])?
+        .with_system_with_dependencies("setup", setup, &[], &[render::SYSTEM_STAGE_PRE_RENDER])?
+        .with_system_with_dependencies(
+            "terrain_setup",
+            terrain_system_setup,
+            &[render::SYSTEM_STAGE_PRE_RENDER],
+            &[],
+        )?
         .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
         .with_system("game_input", input::game_input_system)?
@@ -61,11 +69,8 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_event::<WindowEvent>("window_event")
         .with_event::<KeyboardInput>("keyboard_input_event");
 
-    let names = client.state_mut().ecs_mut().get_sync_schedule_names();
-    log::debug!("System schedule order:");
-    for (i, system) in names.iter().enumerate() {
-        log::debug!("{}: {:?}", i, system);
-    }
+    core::state::print_system_schedule(client.state_mut().ecs_mut());
+
     Ok(())
 }
 

@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 log = { workspace = true }
 core = { path = "../core", package = "explora_core" }
+apecs = { workspace = true }

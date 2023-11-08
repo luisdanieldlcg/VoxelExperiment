@@ -6,5 +6,6 @@ pub mod event;
 pub mod net;
 pub mod resources;
 pub mod state;
+pub mod uid;
 
 pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;

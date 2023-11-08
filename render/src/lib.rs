@@ -14,6 +14,11 @@ use resources::{EguiContext, TerrainRenderData};
 use texture::Texture;
 use vek::{Mat4, Vec3};
 
+pub const SYSTEM_STAGE_PRE_RENDER: &str = "pre_render";
+pub const SYSTEM_STAGE_RENDER: &str = "render";
+pub const SYSTEM_STAGE_UI_DRAW_WIDGETS: &str = "ui_draw_widgets";
+pub const SYSTEM_STAGE_UI_RENDER: &str = "ui_render";
+pub const SYSTEM_STAGE_POST_RENDER: &str = "post_render";
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
 
@@ -214,15 +219,30 @@ impl Renderer {
             .with_resource(|_: ()| Ok(GpuGlobals::default()))
             .with_resource(|_: ()| Ok(TerrainRenderData::default()))
             .with_resource(|_: ()| Ok(EguiContext::default()))
-            .with_system("pre_render", pre_render_system, &["render"], &[])
-            .with_system("render", render_system, &["egui_debug_render"], &[])
             .with_system(
-                "ui_render",
-                ui::ui_render_system,
-                &["post_render"],
-                &["egui_debug_render"], // TODO: remove egui_debug_render from here
+                SYSTEM_STAGE_PRE_RENDER,
+                pre_render_system,
+                &[SYSTEM_STAGE_RENDER],
+                &[],
             )
-            .with_system("post_render", post_render_system, &[], &[])
+            .with_system(
+                SYSTEM_STAGE_RENDER,
+                render_system,
+                &[SYSTEM_STAGE_UI_DRAW_WIDGETS],
+                &[SYSTEM_STAGE_PRE_RENDER],
+            )
+            .with_system(
+                SYSTEM_STAGE_UI_RENDER,
+                ui::ui_render_system,
+                &[],
+                &[SYSTEM_STAGE_UI_DRAW_WIDGETS],
+            )
+            .with_system(
+                SYSTEM_STAGE_POST_RENDER,
+                post_render_system,
+                &[],
+                &[SYSTEM_STAGE_UI_RENDER],
+            )
     }
 
     pub fn resize(&mut self, new_width: u32, new_height: u32) {

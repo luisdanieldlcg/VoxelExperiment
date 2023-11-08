@@ -3,7 +3,7 @@ use server::Server;
 
 fn main() {
     env_logger::builder()
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Debug)
         .init();
 
     log::info!("Test info");
@@ -12,7 +12,7 @@ fn main() {
     log::error!("Test error");
     log::trace!("Test trace");
 
-    let mut server = Server::new();
+    let mut server = Server::new().unwrap();
     let mut clock = Clock::default();
 
     loop {
