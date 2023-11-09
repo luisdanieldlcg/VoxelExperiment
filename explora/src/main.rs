@@ -1,15 +1,11 @@
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    num::NonZeroU32,
-};
-
-use core::{clock::Clock, SysResult};
+use core::{clock::Clock, SysResult, resources::GameMode};
 use explora::{
     block::{self, BlockMap},
     camera::Camera,
     client::Client,
     input::{self, Input, KeyboardInput},
     scene,
+    singleplayer::Singleplayer,
     terrain::terrain_system_setup,
     ui::EguiInput,
     window::{Window, WindowEvent},
@@ -19,16 +15,28 @@ use render::Renderer;
 fn main() -> anyhow::Result<()> {
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
-        .filter_module("wgpu_core", log::LevelFilter::Info)
+        .filter_module("wgpu", log::LevelFilter::Warn)
+        .filter_module("naga", log::LevelFilter::Info)
         .init();
 
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),
     });
-    let mut client = Client::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1234));
-    setup_ecs(&mut client, window)?;
-    explora::run::run(event_loop, client);
 
+    let singleplayer = Singleplayer::init();
+    let addr = singleplayer.wait_for_init();
+    let mut client = match Client::new(addr) {
+        Ok(t) => t,
+        Err(err) => {
+            log::error!("{:?}", err);
+            // TODO: if we cannot connect to the server create a single-player game
+            panic!();
+        },
+    };
+    setup_ecs(&mut client, window)?;
+    // TODO: change this. this should NOT be here
+    *client.state_mut().resource_mut::<GameMode>() = GameMode::Singleplayer;
+    explora::run::run(event_loop, client);
     Ok(())
 }
 

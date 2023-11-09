@@ -1,4 +1,4 @@
-use core::{clock::Clock, SysResult};
+use core::{clock::Clock, SysResult, resources::{Ping, GameMode}};
 
 use apecs::{NoDefault, Read};
 use log::info;
@@ -43,6 +43,8 @@ pub struct EguiRenderSystem {
     renderer: Write<render::Renderer, NoDefault>,
     window: Read<Window, NoDefault>,
     globals: Write<render::GpuGlobals>,
+    ping: Read<Ping>,
+    mode: Read<GameMode, NoDefault>,
 }
 // This system must run before the render system
 pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
@@ -61,11 +63,13 @@ pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
         let mut camera_fov = player_camera.fov;
         let mut lighting = system.globals.enable_lighting != 0;
         egui::Window::new("Debug")
-            .default_width(400.0)
-            .default_height(400.0)
+            .default_width(360.0)
+            .default_height(360.0)
             .show(system.egui_context.get(), |ui| {
-                ui.label(format!("FPS: {}", system.clock.fps()));
+                ui.heading(format!("Game Mode: {:?}", *system.mode));
                 ui.separator();
+                ui.label(format!("Ping: {:.2}ms", system.ping.0 * 1000.0));
+                ui.label(format!("FPS: {}", system.clock.fps()));
                 ui.label(format!("Facing: {}", orientation));
                 let pos = player_camera.pos();
                 ui.label(format!(

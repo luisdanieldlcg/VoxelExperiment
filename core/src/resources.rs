@@ -10,10 +10,13 @@ pub struct DeltaTime(pub f32);
 
 /// This is the time passed since the game started
 #[derive(Default)]
-pub struct GlobalTime(pub f64);
+pub struct ProgramTime(pub f64);
 
 #[derive(Default)]
 pub struct TerrainMap(pub HashMap<Vec2<i32>, Chunk>);
+
+#[derive(Default)]
+pub struct Ping(pub f64);
 
 #[derive(Clone, Copy, Debug)]
 pub enum GameMode {
@@ -21,6 +24,7 @@ pub enum GameMode {
     Server,
     Singleplayer,
 }
+
 
 #[derive(Default)]
 pub struct EntityMap {
@@ -40,6 +44,10 @@ impl EntityMap {
 
     pub fn entity(&self, uid: Uid) -> Option<apecs::Entity> {
         self.entities.get(&uid).cloned()
+    }
+
+    pub fn remove(&mut self, uid: Uid) -> Option<apecs::Entity> {
+        self.entities.remove(&uid)
     }
 
     fn next_uid(&mut self) -> Uid {

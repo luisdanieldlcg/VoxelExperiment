@@ -6,6 +6,7 @@ pub mod input;
 pub mod mesh;
 pub mod run;
 pub mod scene;
+pub mod singleplayer;
 pub mod terrain;
 pub mod ui;
 pub mod window;

@@ -1,10 +1,8 @@
 use std::time::Duration;
 
-use log::info;
-
 use crate::{
     event::{Event, Events},
-    resources::{DeltaTime, EntityMap, GameMode, GlobalTime, TerrainMap},
+    resources::{DeltaTime, EntityMap, GameMode, Ping, ProgramTime, TerrainMap},
 };
 
 pub struct State {
@@ -24,17 +22,20 @@ impl State {
 
     pub fn new(mode: GameMode) -> apecs::anyhow::Result<Self> {
         let mut world = apecs::World::default();
-        world.with_default_resource::<DeltaTime>()?;
-        world.with_default_resource::<GlobalTime>()?;
-        world.with_default_resource::<TerrainMap>()?;
-        world.with_default_resource::<EntityMap>()?;
-        world.with_resource(mode)?;
+        world
+            .with_default_resource::<DeltaTime>()?
+            .with_default_resource::<ProgramTime>()?
+            .with_default_resource::<TerrainMap>()?
+            .with_default_resource::<EntityMap>()?
+            .with_default_resource::<Ping>()?
+            .with_resource(mode)?;
+
         Ok(Self { world })
     }
 
     pub fn tick(&mut self, dt: Duration) {
         self.resource_mut::<DeltaTime>().0 = dt.as_secs_f32();
-        self.resource_mut::<GlobalTime>().0 += dt.as_secs_f64();
+        self.resource_mut::<ProgramTime>().0 += dt.as_secs_f64();
 
         if let Err(e) = self.world.tick() {
             log::error!("{}", e);
@@ -66,6 +67,10 @@ impl State {
         self.world
             .resource_mut::<R>()
             .expect("Tried to fetch an invalid resource")
+    }
+
+    pub fn program_time(&self) -> f64 {
+        self.resource::<ProgramTime>().0
     }
 
     pub fn query<Q: apecs::IsQuery + 'static>(&mut self) -> apecs::QueryGuard<'_, Q> {

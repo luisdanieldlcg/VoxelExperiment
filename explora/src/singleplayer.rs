@@ -1,0 +1,53 @@
+use core::clock::Clock;
+
+use std::{net::SocketAddr, sync::mpsc, thread};
+
+use server::{config::ServerConfig, Server};
+
+pub struct Singleplayer {
+    server_thread: thread::JoinHandle<()>,
+    init_receiver: mpsc::Receiver<SocketAddr>,
+}
+
+impl Singleplayer {
+    pub fn init() -> Self {
+        let (tx, rx) = mpsc::channel();
+        let handle = std::thread::spawn(move || {
+            let config = ServerConfig::toml();
+            let addr = format!("{}:{}", config.host, config.port)
+                .parse::<SocketAddr>()
+                .expect("Failed to parse server address");
+            match server::Server::new(config) {
+                Ok(server) => {
+                    if let Err(e) = tx.send(addr) {
+                        log::error!("{:?}", e);
+                    }
+                    self::run_singleplayer_server(server);
+                },
+                Err(_) => {
+                    panic!("Failed to initialize singleplayer server.");
+                },
+            };
+        });
+
+        Self {
+            server_thread: handle,
+            init_receiver: rx,
+        }
+    }
+
+    pub fn wait_for_init(&self) -> SocketAddr {
+        self.init_receiver
+            .recv()
+            .expect("Failed to send initialization message")
+    }
+}
+
+pub fn run_singleplayer_server(mut server: Server) {
+    log::info!("Starting singleplayer server...");
+    let mut clock = Clock::default();
+    loop {
+        clock.tick();
+        server.tick(clock.dt());
+    }
+}

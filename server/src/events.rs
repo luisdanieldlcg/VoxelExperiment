@@ -1,4 +1,4 @@
-use core::{event::Events, uid::Uid, SysResult};
+use core::{event::Events, resources::EntityMap, uid::Uid, SysResult};
 
 use apecs::{ok, Write, *};
 
@@ -10,19 +10,22 @@ pub enum ServerEvent {
 pub struct HandleServerEvents {
     events: Write<Events<ServerEvent>>,
     entities: Write<Entities>,
+    entity_map: Write<EntityMap>,
 }
 
-pub fn handle_server_events(system: HandleServerEvents) -> SysResult {
+pub fn handle_server_events(mut system: HandleServerEvents) -> SysResult {
     for event in &system.events.events {
         match event {
             ServerEvent::ClientDisconnect(uid) => {
-                let entity = system.entities.hydrate(uid.0 as usize);
-                if let Some(entity) = entity {
+                if let Some(entity) = system.entity_map.entity(*uid) {
                     system.entities.destroy(entity);
-                    // TODO: update entity map
-                    log::info!("Client {} disconnected.", uid.0);
+                    system.entity_map.remove(*uid);
+                    log::info!("Client {} disconnected.", uid);
                 } else {
-                    log::error!("entity not found.");
+                    log::error!(
+                        "Entity with uid: {} was not found in the entity map. this is a bug",
+                        uid
+                    );
                 }
             },
         }

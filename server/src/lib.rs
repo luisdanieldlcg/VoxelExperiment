@@ -1,16 +1,15 @@
+pub mod config;
 pub mod events;
 
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    time::Duration,
-};
+use std::{net::SocketAddr, time::Duration};
 
 use apecs::CanFetch;
+use config::ServerConfig;
 use core::{
     event::Events,
     net::con::Connection,
     net::packet::{ClientPacket, PingPacket, ServerPacket},
-    resources::{EntityMap, GlobalTime},
+    resources::{EntityMap, ProgramTime},
     state::State,
     uid::Uid,
     SysResult,
@@ -18,10 +17,6 @@ use core::{
 use log::info;
 
 type ServerConnection = Connection<ServerPacket, ClientPacket>;
-
-// TODO: make these configurable
-const PORT: u16 = 1234;
-const TIMEOUT: f64 = 2.0; // in seconds
 
 pub struct RemoteClient {
     addr: SocketAddr,
@@ -34,15 +29,18 @@ pub struct Server {
 
 #[allow(clippy::new_without_default)]
 impl Server {
-    pub fn new() -> anyhow::Result<Self> {
-        let local_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), PORT);
-        let con: ServerConnection = Connection::listen(local_addr).unwrap();
-        log::info!("Server listening on {}", local_addr);
+    pub fn new(config: ServerConfig) -> anyhow::Result<Self> {
+        let addr = format!("{}:{}", config.host, config.port)
+            .parse::<SocketAddr>()
+            .expect("Failed to parse server address");
+        let con: ServerConnection = Connection::listen(addr).unwrap();
+        log::info!("Server listening on {}", addr);
         let mut state = State::server().unwrap();
 
         state
             .ecs_mut()
             .with_resource(con)?
+            .with_resource(config)?
             .with_system_with_dependencies(
                 "handle_incoming_packets",
                 handle_incoming_packets,
@@ -83,7 +81,7 @@ pub struct HandleIncomingPacketsSystem {
     connection: Read<ServerConnection, NoDefault>,
     entities: Write<Entities>,
     entity_map: Write<EntityMap>,
-    global_time: Read<GlobalTime>,
+    global_time: Read<ProgramTime>,
 }
 
 pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResult {
@@ -111,7 +109,14 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
                 // TODO: send server event
             },
             ClientPacket::Ping(packet) => match packet {
-                PingPacket::Ping => {},
+                PingPacket::Ping => {
+                    if let Err(error) = sys
+                        .connection
+                        .send_to(ServerPacket::Ping(PingPacket::Pong), addr)
+                    {
+                        log::error!("Failed to send ping packet to client: {:?}", error);
+                    }
+                },
                 PingPacket::Pong => {},
             },
         }
@@ -122,8 +127,9 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
 #[derive(CanFetch)]
 pub struct HandleClientPing {
     clients: Query<(&'static mut Uid, &'static mut RemoteClient)>,
-    global_time: Read<GlobalTime>,
+    global_time: Read<ProgramTime>,
     events: Write<Events<ServerEvent>>,
+    config: Read<ServerConfig, NoDefault>,
 }
 
 pub fn handle_client_ping(mut sys: HandleClientPing) -> SysResult {
@@ -132,7 +138,7 @@ pub fn handle_client_ping(mut sys: HandleClientPing) -> SysResult {
     for (uid, client) in query.iter_mut() {
         let delta = sys.global_time.0 - client.last_ping;
 
-        if delta > TIMEOUT {
+        if delta > sys.config.timeout as f64 {
             log::info!("Client {} timed out.", uid.0);
             sys.events.send(ServerEvent::ClientDisconnect(**uid));
         }
