@@ -73,6 +73,14 @@ impl State {
         self.resource::<ProgramTime>().0
     }
 
+    pub fn terrain(&self) -> &TerrainMap {
+        self.resource::<TerrainMap>()
+    }
+
+    pub fn terrain_mut(&mut self) -> &mut TerrainMap {
+        self.resource_mut::<TerrainMap>()
+    }
+
     pub fn query<Q: apecs::IsQuery + 'static>(&mut self) -> apecs::QueryGuard<'_, Q> {
         self.world.query::<Q>()
     }

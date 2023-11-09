@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use vek::Vec2;
 
@@ -13,7 +13,10 @@ pub struct DeltaTime(pub f32);
 pub struct ProgramTime(pub f64);
 
 #[derive(Default)]
-pub struct TerrainMap(pub HashMap<Vec2<i32>, Chunk>);
+pub struct TerrainMap {
+    pub chunks: HashMap<Vec2<i32>, Chunk>,
+    pub pending_chunks: HashSet<Vec2<i32>>,
+}
 
 #[derive(Default)]
 pub struct Ping(pub f64);
@@ -24,7 +27,6 @@ pub enum GameMode {
     Server,
     Singleplayer,
 }
-
 
 #[derive(Default)]
 pub struct EntityMap {

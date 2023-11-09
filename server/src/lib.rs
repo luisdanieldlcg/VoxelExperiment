@@ -1,7 +1,7 @@
 pub mod config;
 pub mod events;
 
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, time::Duration, collections::HashSet};
 
 use apecs::CanFetch;
 use config::ServerConfig;
@@ -9,10 +9,10 @@ use core::{
     event::Events,
     net::con::Connection,
     net::packet::{ClientPacket, PingPacket, ServerPacket},
-    resources::{EntityMap, ProgramTime},
+    resources::{EntityMap, ProgramTime, TerrainMap},
     state::State,
     uid::Uid,
-    SysResult,
+    SysResult, chunk::Chunk, block::BlockId,
 };
 use log::info;
 
@@ -82,9 +82,11 @@ pub struct HandleIncomingPacketsSystem {
     entities: Write<Entities>,
     entity_map: Write<EntityMap>,
     global_time: Read<ProgramTime>,
+    terrain: Write<TerrainMap>
 }
 
 pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResult {
+    let mut requested_chunks = HashSet::new();
     if let Ok((packet, addr)) = sys.connection.recv() {
         match packet {
             ClientPacket::Connect => {
@@ -119,8 +121,29 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
                 },
                 PingPacket::Pong => {},
             },
+
+            ClientPacket::ChunkRequest(pos) => {
+                match sys.terrain.chunks.get(&pos) {
+                    Some(t) =>  {
+                        let packet = ServerPacket::ChunkUpdate { pos, data: t.clone() };
+                        if let Err(e) = sys.connection.send_to(packet, addr) {
+                            log::error!("Failed to send chunk update packet to client: {:?}", e);
+                        }
+                    }
+                    None => {
+                        requested_chunks.insert(pos);
+                    }
+                }
+            }
         }
     }
+
+    for pos in &requested_chunks {
+        let chunk = Chunk::flat(BlockId::Stone);
+        let terrain = sys.terrain.inner_mut();
+        terrain.chunks.insert(*pos, chunk);
+    }
+    requested_chunks.clear();
     ok()
 }
 

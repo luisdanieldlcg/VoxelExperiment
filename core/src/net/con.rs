@@ -4,7 +4,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use super::{error::NetworkError, socket};
 
-const PACKET_BUFFER_SIZE: usize = 1024;
+const PACKET_BUFFER_SIZE: usize = 8192;
 
 /// Represents a connection that can either send or receive packets.
 ///

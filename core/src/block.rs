@@ -1,4 +1,6 @@
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlockId {
     Air,
     Dirt,

@@ -1,6 +1,7 @@
 pub mod block;
 pub mod chunk;
 pub mod clock;
+pub mod components;
 pub mod dir;
 pub mod event;
 pub mod net;

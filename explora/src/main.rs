@@ -1,4 +1,4 @@
-use core::{clock::Clock, SysResult, resources::GameMode};
+use core::{clock::Clock, components::Pos, resources::GameMode, SysResult};
 use explora::{
     block::{self, BlockMap},
     camera::Camera,
@@ -25,7 +25,8 @@ fn main() -> anyhow::Result<()> {
 
     let singleplayer = Singleplayer::init();
     let addr = singleplayer.wait_for_init();
-    let mut client = match Client::new(addr) {
+    let aspect = window.inner_size().x as f32 / window.inner_size().y as f32;
+    let mut client = match Client::new(addr, aspect) {
         Ok(t) => t,
         Err(err) => {
             log::error!("{:?}", err);
@@ -67,6 +68,7 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         )?
         .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
+        .with_system("terrain_tick", explora::terrain::terrain_system_tick)?
         .with_system("game_input", input::game_input_system)?
         .with_system_barrier()
         .with_system("scene_update", scene::scene_update_system)?
@@ -95,11 +97,11 @@ struct SetupSystem {
 fn setup(mut sys: SetupSystem) -> SysResult {
     sys.window.grab_cursor(true);
     *sys.block_map = block::load_blocks("assets/blocks", &sys.renderer.block_atlas().tiles);
-    let mut player = sys.entities.create();
+    // let player = sys.entities.create();
     let window_size = sys.window.inner_size().map(|x| x as f32);
     let aspect_ratio = window_size.x / window_size.y;
     let mut camera = Camera::new(aspect_ratio);
     camera.rotate(0.0, 0.0);
-    player.insert_component(camera);
+    // player.with_bundle((camera, Pos::default()));
     end()
 }

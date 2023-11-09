@@ -1,4 +1,8 @@
-use core::{clock::Clock, SysResult, resources::{Ping, GameMode}};
+use core::{
+    clock::Clock,
+    resources::{GameMode, Ping},
+    SysResult,
+};
 
 use apecs::{NoDefault, Read};
 use log::info;

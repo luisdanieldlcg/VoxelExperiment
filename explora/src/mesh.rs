@@ -28,7 +28,7 @@ pub fn create_chunk_mesh(
                 // Now we have to check if there is a chunk adjacent to this one
                 let neighbor_chunk_dir = Vec2::new(chunk_pos.x + dir.x, chunk_pos.y + dir.z);
 
-                let Some(neighbor_chunk) = terrain_map.0.get(&(neighbor_chunk_dir)) else {
+                let Some(neighbor_chunk) = terrain_map.chunks.get(&(neighbor_chunk_dir)) else {
                     // If there is no adjacent chunk we have to render the quad
                     // because it is a border of the chunk
                     return true;

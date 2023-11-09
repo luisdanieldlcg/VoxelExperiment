@@ -1,11 +1,11 @@
-use std::cmp::Ordering;
-
 use noise::{NoiseFn, Perlin};
+use serde::{Serialize, Deserialize};
 // use noise::{BasicMulti, Perlin, NoiseFn};
 use vek::{Vec2, Vec3};
 
 use crate::block::BlockId;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Chunk {
     blocks: Vec<BlockId>,
 }
@@ -21,11 +21,11 @@ pub fn compute_height(generator: Perlin, world_x: f64, world_z: f64) -> i32 {
 }
 
 impl Chunk {
-    pub const SIZE: Vec3<usize> = Vec3::new(16, 256, 16);
+    pub const SIZE: Vec3<usize> = Vec3::new(16, 32, 16);
 
-    pub fn flat() -> Self {
+    pub fn flat(id: BlockId) -> Self {
         Self {
-            blocks: vec![BlockId::Air; Self::SIZE.product()],
+            blocks: vec![id; Self::SIZE.product()],
         }
     }
 
@@ -137,11 +137,11 @@ impl Iterator for ChunkIter {
 mod tests {
     use vek::Vec3;
 
-    use crate::chunk::Chunk;
+    use crate::{block::BlockId, chunk::Chunk};
 
     #[test]
     pub fn chunk_iter_works() {
-        let chunk = Chunk::flat();
+        let chunk = Chunk::flat(BlockId::Air);
         let mut count = 0;
 
         for pos in chunk.iter() {
