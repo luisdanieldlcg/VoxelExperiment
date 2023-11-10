@@ -1,4 +1,4 @@
-use core::{clock::Clock, components::Pos, resources::GameMode, SysResult};
+use core::{clock::Clock, resources::GameMode, SysResult};
 use explora::{
     block::{self, BlockMap},
     camera::Camera,
@@ -6,7 +6,7 @@ use explora::{
     input::{self, Input, KeyboardInput},
     scene,
     singleplayer::Singleplayer,
-    terrain::terrain_system_setup,
+    terrain::terrain_system_render,
     ui::EguiInput,
     window::{Window, WindowEvent},
 };
@@ -51,7 +51,6 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_default_resource::<EguiInput>()?
         .with_default_resource::<BlockMap>()?
         .with_resource(window)?
-        .with_system_barrier()
         .with_plugin(render_plugin)?
         .with_system_with_dependencies(
             render::SYSTEM_STAGE_UI_DRAW_WIDGETS,
@@ -62,17 +61,15 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_system_with_dependencies("setup", setup, &[], &[render::SYSTEM_STAGE_PRE_RENDER])?
         .with_system_with_dependencies(
             "terrain_setup",
-            terrain_system_setup,
+            terrain_system_render,
             &[render::SYSTEM_STAGE_PRE_RENDER],
             &[],
         )?
         .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
-        .with_system("terrain_tick", explora::terrain::terrain_system_tick)?
+        .with_system("terrain_tick", explora::terrain::terrain_system_render)?
         .with_system("game_input", input::game_input_system)?
-        .with_system_barrier()
-        .with_system("scene_update", scene::scene_update_system)?
-        .with_system_barrier();
+        .with_system("scene_update", scene::scene_update_system)?;
 
     client
         .state_mut()
@@ -88,7 +85,6 @@ use apecs::*;
 
 #[derive(CanFetch)]
 struct SetupSystem {
-    entities: Write<Entities>,
     window: Write<Window, NoDefault>,
     block_map: Write<BlockMap>,
     renderer: Read<Renderer, NoDefault>,
@@ -97,11 +93,9 @@ struct SetupSystem {
 fn setup(mut sys: SetupSystem) -> SysResult {
     sys.window.grab_cursor(true);
     *sys.block_map = block::load_blocks("assets/blocks", &sys.renderer.block_atlas().tiles);
-    // let player = sys.entities.create();
     let window_size = sys.window.inner_size().map(|x| x as f32);
     let aspect_ratio = window_size.x / window_size.y;
     let mut camera = Camera::new(aspect_ratio);
     camera.rotate(0.0, 0.0);
-    // player.with_bundle((camera, Pos::default()));
     end()
 }

@@ -5,7 +5,7 @@ use core::{
 };
 
 use apecs::{NoDefault, Read};
-use log::info;
+
 use render::resources::{EguiContext, EguiSettings};
 use vek::Vec2;
 

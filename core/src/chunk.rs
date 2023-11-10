@@ -1,5 +1,5 @@
 use noise::{NoiseFn, Perlin};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 // use noise::{BasicMulti, Perlin, NoiseFn};
 use vek::{Vec2, Vec3};
 
@@ -10,7 +10,7 @@ pub struct Chunk {
     blocks: Vec<BlockId>,
 }
 
-pub fn compute_height(generator: Perlin, world_x: f64, world_z: f64) -> i32 {
+pub fn compute_height(generator: &Perlin, world_x: f64, world_z: f64) -> i32 {
     let height = generator.get([world_x, world_z]);
     // Noise values are in range [-1, 1]
     // then adding 1 will transform them to [0, 2]
@@ -21,7 +21,7 @@ pub fn compute_height(generator: Perlin, world_x: f64, world_z: f64) -> i32 {
 }
 
 impl Chunk {
-    pub const SIZE: Vec3<usize> = Vec3::new(16, 32, 16);
+    pub const SIZE: Vec3<usize> = Vec3::new(16, 256, 16);
 
     pub fn flat(id: BlockId) -> Self {
         Self {
@@ -29,7 +29,7 @@ impl Chunk {
         }
     }
 
-    pub fn generate(generator: Perlin, offset: Vec2<i32>) -> Self {
+    pub fn generate(generator: &Perlin, offset: Vec2<i32>) -> Self {
         let mut blocks = vec![BlockId::Air; Self::SIZE.product()];
         let world_x = (offset.x * Self::SIZE.x as i32) as f64;
         let world_z = (offset.y * Self::SIZE.z as i32) as f64;
@@ -50,8 +50,7 @@ impl Chunk {
                     let noise_x = (world_x + x as f64) / offset;
                     let noise_z = (world_z + z as f64) / offset;
                     let stone_height = compute_height(generator, noise_x, noise_z);
-                    let stone_height = ((stone_height as f32) * 0.7) as i32
-                        + generator.get([x as f64 / 100.0, y as f64 / 100.0]) as i32;
+                    let stone_height = ((stone_height as f32) * 0.7) as i32;
 
                     let y = y as i32;
 

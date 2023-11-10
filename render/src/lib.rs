@@ -10,7 +10,7 @@ pub mod vertex;
 
 use atlas::BlockAtlas;
 use buffer::Buffer;
-use resources::{EguiContext, TerrainRenderData};
+use resources::{EguiContext, TerrainRender, TerrainRenderData};
 use texture::Texture;
 use vek::{Mat4, Vec3};
 
@@ -217,7 +217,7 @@ impl Renderer {
         apecs::Plugin::default()
             .with_resource(|_: ()| Ok(self))
             .with_resource(|_: ()| Ok(GpuGlobals::default()))
-            .with_resource(|_: ()| Ok(TerrainRenderData::default()))
+            .with_resource(|_: ()| Ok(TerrainRender::default()))
             .with_resource(|_: ()| Ok(EguiContext::default()))
             .with_system(
                 SYSTEM_STAGE_PRE_RENDER,
@@ -391,7 +391,7 @@ fn pre_render_system(mut system: PreRenderSystem) -> apecs::anyhow::Result<Shoul
 #[derive(CanFetch)]
 struct RenderSystem {
     renderer: Read<Renderer, NoDefault>,
-    terrain_render_data: Read<TerrainRenderData, NoDefault>,
+    terrain: Read<TerrainRender>,
     texture: Write<Option<RenderTexture>>,
     encoder: Write<Option<CommandEncoder>>,
 }
@@ -431,20 +431,28 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
         // occlusion_query_set: None,
         // timestamp_writes: None,
     });
-    if system.terrain_render_data.wireframe {
-        render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
-    } else {
-        render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
+
+    if !system.terrain.chunks.is_empty() {
+        if system.terrain.wireframe {
+            render_pass.set_pipeline(&renderer.pipelines.terrain_wireframe.pipeline);
+        } else {
+            render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
+        }
+        render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
+
+        render_pass.set_index_buffer(
+            renderer.terrain_index_buffer.slice(),
+            wgpu::IndexFormat::Uint32,
+        );
+
+        for terrain_data in system.terrain.chunks.values() {
+            if let Some(buffer) = &terrain_data.buffer {
+                render_pass.set_vertex_buffer(0, buffer.slice());
+                render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
+            }
+        }
     }
-    render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
-    if let Some(buffer) = &system.terrain_render_data.buffer {
-        render_pass.set_vertex_buffer(0, buffer.slice());
-    }
-    render_pass.set_index_buffer(
-        renderer.terrain_index_buffer.slice(),
-        wgpu::IndexFormat::Uint32,
-    );
-    render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
+
     ok()
 }
 

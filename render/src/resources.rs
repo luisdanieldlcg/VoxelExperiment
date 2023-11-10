@@ -1,10 +1,17 @@
+use std::collections::HashMap;
+
+use vek::Vec2;
+
 use crate::{buffer::Buffer, vertex::TerrainVertex};
 
 #[derive(Default)]
+pub struct TerrainRender {
+    pub chunks: HashMap<Vec2<i32>, TerrainRenderData>,
+    pub wireframe: bool,
+}
+
 pub struct TerrainRenderData {
     pub buffer: Option<Buffer<TerrainVertex>>,
-    pub wireframe: bool,
-    pub ready: bool,
 }
 
 #[derive(Debug, Clone, Default)]

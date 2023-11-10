@@ -2,7 +2,7 @@ use core::{event::Events, resources::DeltaTime, SysResult};
 
 use apecs::*;
 
-use render::{resources::TerrainRenderData, GpuGlobals, Renderer};
+use render::{resources::TerrainRender, GpuGlobals, Renderer};
 use vek::Vec3;
 
 use crate::{
@@ -17,7 +17,7 @@ pub struct SceneSystem {
     events: Read<Events<WindowEvent>>,
     delta: Read<DeltaTime>,
     globals: Write<GpuGlobals>,
-    terrain_render_data: Write<TerrainRenderData>,
+    terrain_render_data: Write<TerrainRender>,
     window: Write<Window, NoDefault>,
     renderer: Write<Renderer, NoDefault>,
 }

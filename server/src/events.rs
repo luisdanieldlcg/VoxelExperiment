@@ -1,4 +1,9 @@
-use core::{event::Events, resources::EntityMap, uid::Uid, SysResult};
+use core::{
+    event::Events,
+    resources::{EntityMap, TerrainMap},
+    uid::Uid,
+    SysResult,
+};
 
 use apecs::{ok, Write, *};
 

@@ -5,14 +5,13 @@ use std::{net::SocketAddr, sync::mpsc, thread};
 use server::{config::ServerConfig, Server};
 
 pub struct Singleplayer {
-    server_thread: thread::JoinHandle<()>,
     init_receiver: mpsc::Receiver<SocketAddr>,
 }
 
 impl Singleplayer {
     pub fn init() -> Self {
         let (tx, rx) = mpsc::channel();
-        let handle = std::thread::spawn(move || {
+        std::thread::spawn(move || {
             let config = ServerConfig::toml();
             let addr = format!("{}:{}", config.host, config.port)
                 .parse::<SocketAddr>()
@@ -30,10 +29,7 @@ impl Singleplayer {
             };
         });
 
-        Self {
-            server_thread: handle,
-            init_receiver: rx,
-        }
+        Self { init_receiver: rx }
     }
 
     pub fn wait_for_init(&self) -> SocketAddr {

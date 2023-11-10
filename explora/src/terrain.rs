@@ -1,9 +1,8 @@
-use core::{block::BlockId, chunk::Chunk, resources::TerrainMap, SysResult};
-use log::info;
-use noise::Perlin;
-use rand::Rng;
-use render::{resources::TerrainRenderData, Renderer};
-use vek::Vec2;
+use core::{resources::TerrainMap, SysResult};
+use render::{
+    resources::{TerrainRender, TerrainRenderData},
+    Renderer,
+};
 
 use apecs::*;
 
@@ -14,57 +13,24 @@ pub struct TerrainSystem {
     renderer: Write<Renderer, NoDefault>,
     terrain_map: Write<TerrainMap>,
     block_map: Read<BlockMap>,
-    terrain_render_data: Write<TerrainRenderData, NoDefault>,
+    terrain_render_data: Write<TerrainRender, NoDefault>,
 }
 
-pub fn terrain_system_setup(mut system: TerrainSystem) -> SysResult {
+pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
+    let blocks = system.block_map.inner();
+
     let terrain = system.terrain_map.inner_mut();
 
-    let blocks = system.block_map.inner();
-    // let seed = rand::thread_rng().gen_range(0..100);
-    // let noise = Perlin::new(seed);
-    let radius = 1;
-    for x in -radius..radius {
-        for z in -radius..radius {
-            // let pos = Vec2::new(x, z);
-            // info!("Generating chunk at: {:?}", pos);
-            // let chunk = Chunk::generate(noise, pos);
-            // terrain.0.insert(pos, chunk);
-
-            // generate flat chunks for now
-            let pos = Vec2::new(x, z);
-            info!("Generating chunk at: {:?}", pos);
-            let chunk = Chunk::flat(BlockId::Stone);
-            terrain.chunks.insert(pos, chunk);
+    for (pos, chunk) in &terrain.chunks {
+        if system.terrain_render_data.chunks.get(pos).is_none() {
+            let mesh = mesh::create_chunk_mesh(chunk, *pos, terrain, blocks);
+            system.terrain_render_data.chunks.insert(
+                *pos,
+                TerrainRenderData {
+                    buffer: Some(system.renderer.create_vertex_buffer(&mesh)),
+                },
+            );
         }
     }
-    let mut mesh_work = Vec::with_capacity(Chunk::SIZE.product());
-
-    for (pos, chunk) in terrain.chunks.iter() {
-        let mesh = mesh::create_chunk_mesh(chunk, *pos, terrain, blocks);
-        mesh_work.extend(mesh);
-    }
-    *system.terrain_render_data = TerrainRenderData {
-        buffer: Some(system.renderer.create_vertex_buffer(&mesh_work)),
-        wireframe: false,
-        ready: true,
-    };
-    info!("Terrain system setup complete");
-    end()
-}
-
-pub fn terrain_system_tick(mut system: TerrainSystem) -> SysResult {
-    // let mut mesh_work = Vec::with_capacity(Chunk::SIZE.product());
-    // let terrain = system.terrain_map.inner_mut();
-    // let blocks = system.block_map.inner();
-    // for (pos, chunk) in terrain.chunks.iter() {
-    //     let mesh = mesh::create_chunk_mesh(chunk, *pos, terrain, blocks);
-    //     mesh_work.extend(mesh);
-    // }
-    // *system.terrain_render_data = TerrainRenderData {
-    //     buffer: Some(system.renderer.create_vertex_buffer(&mesh_work)),
-    //     wireframe: false,
-    //     ready: true,
-    // };
     ok()
 }

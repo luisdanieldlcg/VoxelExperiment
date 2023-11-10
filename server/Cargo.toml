@@ -11,3 +11,5 @@ core = { path = "../core", package = "explora_core" }
 apecs = { workspace = true }
 serde = { workspace = true }
 toml = { workspace = true }
+noise = { workspace = true }
+vek = {workspace = true }

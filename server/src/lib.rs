@@ -1,18 +1,19 @@
 pub mod config;
 pub mod events;
 
-use std::{net::SocketAddr, time::Duration, collections::HashSet};
+use std::{net::SocketAddr, time::Duration};
 
 use apecs::CanFetch;
 use config::ServerConfig;
 use core::{
+    chunk::Chunk,
     event::Events,
     net::con::Connection,
     net::packet::{ClientPacket, PingPacket, ServerPacket},
     resources::{EntityMap, ProgramTime, TerrainMap},
     state::State,
     uid::Uid,
-    SysResult, chunk::Chunk, block::BlockId,
+    SysResult,
 };
 use log::info;
 
@@ -25,6 +26,14 @@ pub struct RemoteClient {
 
 pub struct Server {
     state: State,
+}
+
+pub struct TerrainGenerator(noise::Perlin);
+
+impl Default for TerrainGenerator {
+    fn default() -> Self {
+        Self(noise::Perlin::new(1244))
+    }
 }
 
 #[allow(clippy::new_without_default)]
@@ -41,6 +50,7 @@ impl Server {
             .ecs_mut()
             .with_resource(con)?
             .with_resource(config)?
+            .with_default_resource::<TerrainGenerator>()?
             .with_system_with_dependencies(
                 "handle_incoming_packets",
                 handle_incoming_packets,
@@ -82,11 +92,11 @@ pub struct HandleIncomingPacketsSystem {
     entities: Write<Entities>,
     entity_map: Write<EntityMap>,
     global_time: Read<ProgramTime>,
-    terrain: Write<TerrainMap>
+    terrain: Write<TerrainMap>,
+    terrain_generator: Read<TerrainGenerator>,
 }
 
 pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResult {
-    let mut requested_chunks = HashSet::new();
     if let Ok((packet, addr)) = sys.connection.recv() {
         match packet {
             ClientPacket::Connect => {
@@ -122,28 +132,24 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
                 PingPacket::Pong => {},
             },
 
-            ClientPacket::ChunkRequest(pos) => {
-                match sys.terrain.chunks.get(&pos) {
-                    Some(t) =>  {
-                        let packet = ServerPacket::ChunkUpdate { pos, data: t.clone() };
-                        if let Err(e) = sys.connection.send_to(packet, addr) {
-                            log::error!("Failed to send chunk update packet to client: {:?}", e);
-                        }
+            ClientPacket::ChunkRequest(pos) => match sys.terrain.chunks.get(&pos) {
+                Some(t) => {
+                    let packet = ServerPacket::ChunkUpdate {
+                        pos,
+                        data: t.clone(),
+                    };
+                    if let Err(e) = sys.connection.send_to(packet, addr) {
+                        log::error!("Failed to send chunk update packet to client: {:?}", e);
                     }
-                    None => {
-                        requested_chunks.insert(pos);
-                    }
-                }
-            }
+                },
+                None => {
+                    let chunk = Chunk::generate(&sys.terrain_generator.0, pos);
+                    sys.terrain.chunks.insert(pos, chunk);
+                },
+            },
         }
     }
 
-    for pos in &requested_chunks {
-        let chunk = Chunk::flat(BlockId::Stone);
-        let terrain = sys.terrain.inner_mut();
-        terrain.chunks.insert(*pos, chunk);
-    }
-    requested_chunks.clear();
     ok()
 }
 

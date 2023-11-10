@@ -1,10 +1,7 @@
+use serde::{de::DeserializeOwned, Serialize};
 use std::net::{SocketAddr, UdpSocket};
 
-use serde::{de::DeserializeOwned, Serialize};
-
 use super::{error::NetworkError, socket};
-
-const PACKET_BUFFER_SIZE: usize = 8192;
 
 /// Represents a connection that can either send or receive packets.
 ///
@@ -66,7 +63,7 @@ impl<S: Serialize, R: DeserializeOwned> Connection<S, R> {
 
     /// Receive a packet. This will not block, if there is no packet it will return an error.
     pub fn recv(&self) -> Result<(R, SocketAddr), NetworkError> {
-        let mut buf = [0; PACKET_BUFFER_SIZE];
+        let mut buf = [0; 2 << 14];
         match self.socket.recv_from(&mut buf) {
             Ok((len, addr)) => Self::deserialize(&buf[..len]).map(|p| (p, addr)),
             Err(e) => Err(NetworkError::IOError(e.kind())),
@@ -78,11 +75,13 @@ impl<S: Serialize, R: DeserializeOwned> Connection<S, R> {
     }
 
     fn serialize(packet: &S) -> Vec<u8> {
-        bincode::serialize(packet).expect("Failed to serialize packet")
+        let writer = bincode::serialize(packet).expect("Failed to serialize packet");
+        lz4_compress::compress(&writer)
     }
 
     fn deserialize(packet: &[u8]) -> Result<R, NetworkError> {
-        match bincode::deserialize::<R>(packet) {
+        let buf = lz4_compress::decompress(packet).expect("decompression failed");
+        match bincode::deserialize::<R>(buf.as_slice()) {
             Ok(t) => Ok(t),
             Err(e) => Err(NetworkError::DeserializeError(e)),
         }
