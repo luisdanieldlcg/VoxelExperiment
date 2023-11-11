@@ -18,8 +18,7 @@ pub struct TerrainSystem {
 
 pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
     let blocks = system.block_map.inner();
-
-    let terrain = system.terrain_map.inner_mut();
+    let terrain = system.terrain_map.inner();
 
     for (pos, chunk) in &terrain.chunks {
         if system.terrain_render_data.chunks.get(pos).is_none() {
@@ -27,7 +26,7 @@ pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
             system.terrain_render_data.chunks.insert(
                 *pos,
                 TerrainRenderData {
-                    buffer: Some(system.renderer.create_vertex_buffer(&mesh)),
+                    buffer: system.renderer.create_vertex_buffer(&mesh),
                 },
             );
         }

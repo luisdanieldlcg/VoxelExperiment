@@ -446,10 +446,8 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
         );
 
         for terrain_data in system.terrain.chunks.values() {
-            if let Some(buffer) = &terrain_data.buffer {
-                render_pass.set_vertex_buffer(0, buffer.slice());
-                render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
-            }
+            render_pass.set_vertex_buffer(0, terrain_data.buffer.slice());
+            render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
         }
     }
 

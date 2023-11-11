@@ -11,7 +11,7 @@ pub struct TerrainRender {
 }
 
 pub struct TerrainRenderData {
-    pub buffer: Option<Buffer<TerrainVertex>>,
+    pub buffer: Buffer<TerrainVertex>,
 }
 
 #[derive(Debug, Clone, Default)]

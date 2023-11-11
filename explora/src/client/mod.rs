@@ -131,8 +131,6 @@ impl Client {
     }
 }
 
-
-
 use apecs::*;
 #[derive(CanFetch)]
 pub struct ChunkLoadSystem {
@@ -176,6 +174,9 @@ pub fn chunk_load(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<ShouldCo
                 let pos = Vec2::new(x, z);
                 if !system.terrain.chunks.contains_key(&pos) {
                     system.terrain.pending_chunks.insert(pos);
+                }
+                if system.terrain.chunks.len() == 4 {
+                    return end();
                 }
             }
         }

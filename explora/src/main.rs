@@ -6,7 +6,6 @@ use explora::{
     input::{self, Input, KeyboardInput},
     scene,
     singleplayer::Singleplayer,
-    terrain::terrain_system_render,
     ui::EguiInput,
     window::{Window, WindowEvent},
 };
@@ -59,12 +58,6 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
             &[],
         )?
         .with_system_with_dependencies("setup", setup, &[], &[render::SYSTEM_STAGE_PRE_RENDER])?
-        .with_system_with_dependencies(
-            "terrain_setup",
-            terrain_system_render,
-            &[render::SYSTEM_STAGE_PRE_RENDER],
-            &[],
-        )?
         .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
         .with_system("terrain_tick", explora::terrain::terrain_system_render)?

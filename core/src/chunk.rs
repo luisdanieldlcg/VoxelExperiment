@@ -1,6 +1,5 @@
 use noise::{NoiseFn, Perlin};
 use serde::{Deserialize, Serialize};
-// use noise::{BasicMulti, Perlin, NoiseFn};
 use vek::{Vec2, Vec3};
 
 use crate::block::BlockId;
@@ -21,6 +20,7 @@ pub fn compute_height(generator: &Perlin, world_x: f64, world_z: f64) -> i32 {
 }
 
 impl Chunk {
+
     pub const SIZE: Vec3<usize> = Vec3::new(16, 256, 16);
 
     pub fn flat(id: BlockId) -> Self {
