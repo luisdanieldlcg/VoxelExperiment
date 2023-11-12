@@ -36,7 +36,7 @@ impl Client {
         let mut state = State::client().expect("Failed to create client state");
         state
             .ecs_mut()
-            .with_system("chunk_load", chunk_load)
+            .with_system("chunk_load", chunk_load_system)
             .unwrap();
         let instant = std::time::Instant::now();
 
@@ -51,7 +51,6 @@ impl Client {
                             let mut camera = Camera::new(aspect);
                             camera.rotate(0.0, 0.0);
                             entity.with_bundle((camera, Pos::default(), uid));
-
                             break;
                         },
                         ServerPacket::Ping(_) => {},
@@ -139,14 +138,14 @@ pub struct ChunkLoadSystem {
     terrain_render: Write<TerrainRender>,
 }
 
-pub fn chunk_load(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<ShouldContinue> {
+pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<ShouldContinue> {
     if let Some(camera) = system.camera.query().find_one(0) {
         let camera_pos = camera.pos();
         let player_chunk_pos = Vec2::new(
             (camera_pos.x / 16.0).floor() as i32,
             (camera_pos.z / 16.0).floor() as i32,
         );
-        let render_dist = 4;
+        let render_dist = 8;
 
         let mut chunks_to_remove = Vec::with_capacity(system.terrain.chunks.len());
         // unload chunks
@@ -174,9 +173,6 @@ pub fn chunk_load(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<ShouldCo
                 let pos = Vec2::new(x, z);
                 if !system.terrain.chunks.contains_key(&pos) {
                     system.terrain.pending_chunks.insert(pos);
-                }
-                if system.terrain.chunks.len() == 4 {
-                    return end();
                 }
             }
         }

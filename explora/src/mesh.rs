@@ -89,6 +89,7 @@ pub fn create_chunk_mesh(
         let top = block.textures.top;
         let bottom = block.textures.bottom;
         let side = block.textures.side;
+
         // North
         if render_quad(Direction::North) {
             let normal = Direction::North.vec();

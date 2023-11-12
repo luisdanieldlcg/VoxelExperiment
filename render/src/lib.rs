@@ -10,7 +10,7 @@ pub mod vertex;
 
 use atlas::BlockAtlas;
 use buffer::Buffer;
-use resources::{EguiContext, TerrainRender, TerrainRenderData};
+use resources::{EguiContext, TerrainRender};
 use texture::Texture;
 use vek::{Mat4, Vec3};
 

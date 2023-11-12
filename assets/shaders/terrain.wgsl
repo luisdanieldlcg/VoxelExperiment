@@ -73,7 +73,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     if (globals.enable_lighting == 0u) {
         return obj_color;
     }
-    let ambient_factor = 0.35;
+    let ambient_factor = 0.36;
     let light_color = vec3<f32>(1.0, 1.0, 1.0);
     let ambient = ambient_factor * light_color;
     let light_dir = normalize(globals.sun_pos - input.local_pos);

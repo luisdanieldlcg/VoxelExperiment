@@ -1,7 +1,16 @@
 pub mod config;
 pub mod events;
+pub mod world;
 
-use std::{net::SocketAddr, time::Duration};
+use std::{
+    net::SocketAddr,
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 use apecs::CanFetch;
 use config::ServerConfig;
@@ -16,6 +25,9 @@ use core::{
     SysResult,
 };
 use log::info;
+use noise::Perlin;
+use rayon::ThreadPool;
+use vek::Vec2;
 
 type ServerConnection = Connection<ServerPacket, ClientPacket>;
 
@@ -26,14 +38,6 @@ pub struct RemoteClient {
 
 pub struct Server {
     state: State,
-}
-
-pub struct TerrainGenerator(noise::Perlin);
-
-impl Default for TerrainGenerator {
-    fn default() -> Self {
-        Self(noise::Perlin::new(1244))
-    }
 }
 
 #[allow(clippy::new_without_default)]
@@ -50,7 +54,7 @@ impl Server {
             .ecs_mut()
             .with_resource(con)?
             .with_resource(config)?
-            .with_default_resource::<TerrainGenerator>()?
+            .with_resource(WorldGenerator::new())?
             .with_system_with_dependencies(
                 "handle_incoming_packets",
                 handle_incoming_packets,
@@ -71,7 +75,6 @@ impl Server {
             )?;
 
         state.with_event::<ServerEvent>("server_events");
-
         core::state::print_system_schedule(state.ecs_mut());
 
         Ok(Self { state })
@@ -84,7 +87,7 @@ impl Server {
 
 use apecs::*;
 
-use crate::events::ServerEvent;
+use crate::{events::ServerEvent, world::WorldGenerator};
 
 #[derive(CanFetch)]
 pub struct HandleIncomingPacketsSystem {
@@ -93,7 +96,7 @@ pub struct HandleIncomingPacketsSystem {
     entity_map: Write<EntityMap>,
     global_time: Read<ProgramTime>,
     terrain: Write<TerrainMap>,
-    terrain_generator: Read<TerrainGenerator>,
+    terrain_generator: Read<WorldGenerator, NoDefault>,
 }
 
 pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResult {
@@ -143,8 +146,15 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
                     }
                 },
                 None => {
-                    let chunk = Chunk::generate(&sys.terrain_generator.0, pos);
-                    sys.terrain.chunks.insert(pos, chunk);
+                    let chunk = sys.terrain_generator.generate_chunk(pos);
+                    let packet = ServerPacket::ChunkUpdate {
+                        pos,
+                        data: chunk.clone(),
+                    };
+                    sys.terrain.chunks.insert(pos, chunk.clone());
+                    if let Err(e) = sys.connection.send_to(packet, addr) {
+                        log::error!("Failed to send chunk update packet to client: {:?}", e);
+                    }
                 },
             },
         }

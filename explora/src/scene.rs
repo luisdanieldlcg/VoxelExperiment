@@ -81,7 +81,7 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
     for camera in cameras.iter_mut() {
         camera.update(scene.delta.0, dir);
         let matrices = camera.build_matrices();
-        let sun_pos = Vec3::new(15.0, 320.0, 15.0);
+        let sun_pos = Vec3::new(15.0, 300.0, 15.0);
         let new_globals = GpuGlobals::new(
             matrices.view,
             matrices.proj,

@@ -16,7 +16,6 @@ pub struct ProgramTime(pub f64);
 pub struct TerrainMap {
     pub chunks: HashMap<Vec2<i32>, Chunk>,
     pub pending_chunks: HashSet<Vec2<i32>>,
-    // pub pending_render_chunks: HashMap<Vec2<i32>, Chunk>,
 }
 
 #[derive(Default)]

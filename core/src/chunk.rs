@@ -9,7 +9,9 @@ pub struct Chunk {
     blocks: Vec<BlockId>,
 }
 
-pub fn compute_height(generator: &Perlin, world_x: f64, world_z: f64) -> i32 {
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+pub fn compute_height(generator: &noise::BasicMulti<Perlin>, world_x: f64, world_z: f64) -> i32 {
     let height = generator.get([world_x, world_z]);
     // Noise values are in range [-1, 1]
     // then adding 1 will transform them to [0, 2]
@@ -20,7 +22,6 @@ pub fn compute_height(generator: &Perlin, world_x: f64, world_z: f64) -> i32 {
 }
 
 impl Chunk {
-
     pub const SIZE: Vec3<usize> = Vec3::new(16, 256, 16);
 
     pub fn flat(id: BlockId) -> Self {
@@ -29,49 +30,41 @@ impl Chunk {
         }
     }
 
-    pub fn generate(generator: &Perlin, offset: Vec2<i32>) -> Self {
-        let mut blocks = vec![BlockId::Air; Self::SIZE.product()];
+    pub fn generate(generator: &noise::BasicMulti<Perlin>, offset: Vec2<i32>) -> Self {
         let world_x = (offset.x * Self::SIZE.x as i32) as f64;
         let world_z = (offset.y * Self::SIZE.z as i32) as f64;
-        for x in 0..Self::SIZE.x {
-            for y in 0..Self::SIZE.y {
-                for z in 0..Self::SIZE.z {
-                    let local_pos = Vec3::new(x, y, z).map(|x| x as i32);
-                    let index = match Self::index_of(local_pos) {
-                        Some(i) => i,
-                        None => continue,
-                    };
 
-                    let noise_x = (world_x + x as f64) / 80.0;
-                    let noise_z = (world_z + z as f64) / 80.0;
-                    let height = compute_height(generator, noise_x, noise_z);
+        let blocks = (0..Self::SIZE.product())
+            .into_par_iter()
+            .map(|i| {
+                let x = i % Self::SIZE.x;
+                let y = (i / Self::SIZE.x) % Self::SIZE.y;
+                let z = (i / (Self::SIZE.x * Self::SIZE.y)) % Self::SIZE.z;
 
-                    let offset = 700.0;
-                    let noise_x = (world_x + x as f64) / offset;
-                    let noise_z = (world_z + z as f64) / offset;
-                    let stone_height = compute_height(generator, noise_x, noise_z);
-                    let stone_height = ((stone_height as f32) * 0.7) as i32;
+                let noise_x = (world_x + x as f64) / 140.0;
+                let noise_z = (world_z + z as f64) / 140.0;
+                let height = compute_height(generator, noise_x, noise_z);
 
-                    let y = y as i32;
+                let offset = 700.0;
+                let noise_x = (world_x + x as f64) / offset;
+                let noise_z = (world_z + z as f64) / offset;
+                let stone_height = compute_height(generator, noise_x, noise_z);
+                let stone_height = ((stone_height as f32) * 0.7) as i32;
 
-                    let block = if y == height {
-                        BlockId::Grass
-                    } else if y < height && y > stone_height {
-                        BlockId::Dirt
-                    } else if y < stone_height {
-                        BlockId::Stone
-                    } else {
-                        BlockId::Air
-                    };
+                let y = y as i32;
 
-                    blocks[index] = block;
-
-                    if y == Chunk::SIZE.y as i32 - 1 && matches!(block, BlockId::Dirt) {
-                        blocks[index] = BlockId::Grass;
-                    }
+                if y == height {
+                    BlockId::Grass
+                } else if y < height && y > stone_height {
+                    BlockId::Dirt
+                } else if y < stone_height {
+                    BlockId::Stone
+                } else {
+                    BlockId::Air
                 }
-            }
-        }
+            })
+            .collect::<Vec<_>>();
+
         Self { blocks }
     }
 
