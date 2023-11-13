@@ -101,7 +101,8 @@ impl Client {
                 },
                 ServerPacket::ChunkUpdate { pos, data } => {
                     let terrain = self.state.resource_mut::<TerrainMap>();
-                    terrain.chunks.insert(pos, data);
+                    let chunk = core::chunk::decompress(&data);
+                    terrain.chunks.insert(pos, chunk);
                     terrain.pending_chunks.remove(&pos);
                 },
                 _ => (),

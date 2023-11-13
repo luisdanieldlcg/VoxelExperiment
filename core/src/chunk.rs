@@ -103,6 +103,39 @@ impl Chunk {
         }
     }
 }
+pub fn compress(c: &Chunk) -> Vec<(BlockId, u32)> {
+    let mut compressed = vec![];
+    let mut current_block = c.blocks[0];
+    let mut count = 1;
+
+    for &block in c.blocks.iter().skip(1) {
+        // run length encoding
+        if block == current_block {
+            count += 1;
+        } else {
+            compressed.push((current_block, count));
+            current_block = block;
+            count = 1;
+        }
+    }
+
+    // Don't forget to add the last run
+    compressed.push((current_block, count));
+
+    compressed
+}
+
+pub fn decompress(compressed: &[(BlockId, u32)]) -> Chunk {
+    let mut blocks = vec![];
+
+    for (block, count) in compressed {
+        for _ in 0..*count {
+            blocks.push(*block);
+        }
+    }
+
+    Chunk { blocks }
+}
 
 pub struct ChunkIter {
     index: u32,
@@ -129,7 +162,7 @@ impl Iterator for ChunkIter {
 mod tests {
     use vek::Vec3;
 
-    use crate::{block::BlockId, chunk::Chunk};
+    use crate::{block::BlockId, chunk::{Chunk, compress}};
 
     #[test]
     pub fn chunk_iter_works() {
@@ -152,5 +185,13 @@ mod tests {
         assert!(Chunk::out_of_bounds(Vec3::new(0, 256, 0)));
         assert!(Chunk::out_of_bounds(Vec3::new(0, 0, 16)));
         assert!(!Chunk::out_of_bounds(Vec3::new(15, 255, 15)));
+    }
+
+    #[test]
+    pub fn chunk_compression_test() {
+        let chunk = Chunk::flat(BlockId::Dirt);
+        let compressed = compress(&chunk);
+        assert_eq!(compressed.len(), 1);
+        assert_eq!(compressed[0], (BlockId::Dirt, 16 * 256 * 16));
     }
 }

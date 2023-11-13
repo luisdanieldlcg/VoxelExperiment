@@ -1,4 +1,4 @@
-use core::{ resources::TerrainMap, SysResult};
+use core::{resources::TerrainMap, SysResult};
 
 use render::{
     resources::{TerrainRender, TerrainRenderData},

@@ -1,6 +1,8 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::net::{SocketAddr, UdpSocket};
 
+use crate::{block::BlockId, chunk::Chunk};
+
 use super::{error::NetworkError, socket};
 
 /// Represents a connection that can either send or receive packets.
@@ -63,7 +65,7 @@ impl<S: Serialize, R: DeserializeOwned> Connection<S, R> {
 
     /// Receive a packet. This will not block, if there is no packet it will return an error.
     pub fn recv(&self) -> Result<(R, SocketAddr), NetworkError> {
-        let mut buf = [0; 21000];
+        let mut buf = [0; 12000];
         match self.socket.recv_from(&mut buf) {
             Ok((len, addr)) => Self::deserialize(&buf[..len]).map(|p| (p, addr)),
             Err(e) => Err(NetworkError::IOError(e.kind())),
