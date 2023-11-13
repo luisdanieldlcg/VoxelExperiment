@@ -262,8 +262,8 @@ impl Renderer {
         self.globals_buffer.write(&self.queue, &[globals]);
     }
 
-    pub fn create_vertex_buffer<T: Vertex>(&mut self, data: &[T]) -> Buffer<T> {
-        self.check_index_buffer::<T>(data.len());
+    pub fn create_vertex_buffer<T: Vertex>(&self, data: &[T]) -> Buffer<T> {
+        // self.check_index_buffer::<T>(data.len());
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
     }
 

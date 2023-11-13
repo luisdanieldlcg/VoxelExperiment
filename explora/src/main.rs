@@ -52,6 +52,12 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_resource(window)?
         .with_plugin(render_plugin)?
         .with_system_with_dependencies(
+            "terrain_tick",
+            explora::terrain::terrain_system_render,
+            &["chunk_load"],
+            &[],
+        )?
+        .with_system_with_dependencies(
             render::SYSTEM_STAGE_UI_DRAW_WIDGETS,
             explora::ui::ui_debug_render_system,
             &[],
@@ -60,7 +66,6 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_system_with_dependencies("setup", setup, &[], &[render::SYSTEM_STAGE_PRE_RENDER])?
         .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
-        .with_system("terrain_tick", explora::terrain::terrain_system_render)?
         .with_system("game_input", input::game_input_system)?
         .with_system("scene_update", scene::scene_update_system)?;
 

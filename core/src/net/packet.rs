@@ -13,9 +13,14 @@ pub enum ClientPacket {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerPacket {
-    ClientSync { uid: Uid },
+    ClientSync {
+        uid: Uid,
+    },
     Ping(PingPacket),
-    ChunkUpdate { pos: Vec2<i32>, data: Vec<(BlockId, u32)> },
+    ChunkUpdate {
+        pos: Vec2<i32>,
+        data: Vec<(BlockId, u32)>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -138,10 +138,7 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
             ClientPacket::ChunkRequest(pos) => match sys.terrain.chunks.get(&pos) {
                 Some(t) => {
                     let c = core::chunk::compress(t);
-                    let packet = ServerPacket::ChunkUpdate {
-                        pos,
-                        data: c,
-                    };
+                    let packet = ServerPacket::ChunkUpdate { pos, data: c };
                     if let Err(e) = sys.connection.send_to(packet, addr) {
                         log::error!("Failed to send chunk update packet to client: {:?}", e);
                     }
@@ -149,11 +146,8 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
                 None => {
                     let chunk = sys.terrain_generator.generate_chunk(pos);
                     let c = core::chunk::compress(&chunk);
-                    let packet = ServerPacket::ChunkUpdate {
-                        pos,
-                        data: c,
-                    };
-                    sys.terrain.chunks.insert(pos, chunk.clone());
+                    let packet = ServerPacket::ChunkUpdate { pos, data: c };
+                    sys.terrain.chunks.insert(pos, chunk);
                     if let Err(e) = sys.connection.send_to(packet, addr) {
                         log::error!("Failed to send chunk update packet to client: {:?}", e);
                     }

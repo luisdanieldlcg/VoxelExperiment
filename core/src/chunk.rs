@@ -104,10 +104,9 @@ impl Chunk {
     }
 }
 pub fn compress(c: &Chunk) -> Vec<(BlockId, u32)> {
-    let mut compressed = vec![];
+    let mut compressed = Vec::with_capacity(3000);
     let mut current_block = c.blocks[0];
     let mut count = 1;
-
     for &block in c.blocks.iter().skip(1) {
         // run length encoding
         if block == current_block {
@@ -118,7 +117,6 @@ pub fn compress(c: &Chunk) -> Vec<(BlockId, u32)> {
             count = 1;
         }
     }
-
     // Don't forget to add the last run
     compressed.push((current_block, count));
 
@@ -126,7 +124,7 @@ pub fn compress(c: &Chunk) -> Vec<(BlockId, u32)> {
 }
 
 pub fn decompress(compressed: &[(BlockId, u32)]) -> Chunk {
-    let mut blocks = vec![];
+    let mut blocks = Vec::with_capacity(Chunk::SIZE.product());
 
     for (block, count) in compressed {
         for _ in 0..*count {
@@ -162,7 +160,10 @@ impl Iterator for ChunkIter {
 mod tests {
     use vek::Vec3;
 
-    use crate::{block::BlockId, chunk::{Chunk, compress}};
+    use crate::{
+        block::BlockId,
+        chunk::{compress, Chunk},
+    };
 
     #[test]
     pub fn chunk_iter_works() {
