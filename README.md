@@ -1,6 +1,5 @@
-# Explora
-
-Explora is an open source voxel game written in Rust. It is currently under heavy development.
+# VoxelExperiment
+A basic VoxelEngine written in Rust for learning WGPU.
 
 ![Screenshot](assets/game-screenshot.png)
 
