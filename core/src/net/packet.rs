@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use vek::Vec2;
 
-use crate::{block::BlockId, chunk::Chunk, uid::Uid};
+use crate::{block::BlockId, uid::Uid};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientPacket {

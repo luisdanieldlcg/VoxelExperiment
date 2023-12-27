@@ -1,6 +1,6 @@
 use core::clock::Clock;
 
-use std::{net::SocketAddr, sync::mpsc, thread};
+use std::{net::SocketAddr, sync::mpsc};
 
 use server::{config::ServerConfig, Server};
 

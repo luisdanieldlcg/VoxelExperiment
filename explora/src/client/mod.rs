@@ -6,7 +6,7 @@ use apecs::{ok, CanFetch, Query, ShouldContinue, Write};
 use core::{
     components::Pos,
     net::{
-        con::Connection,
+        connection::Connection,
         error::NetworkError,
         packet::{ClientPacket, PingPacket, ServerPacket},
     },

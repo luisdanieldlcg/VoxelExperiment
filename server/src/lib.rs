@@ -4,20 +4,14 @@ pub mod world;
 
 use std::{
     net::SocketAddr,
-    sync::{
-        mpsc::{Receiver, Sender},
-        Arc,
-    },
-    thread,
     time::Duration,
 };
 
 use apecs::CanFetch;
 use config::ServerConfig;
 use core::{
-    chunk::Chunk,
     event::Events,
-    net::con::Connection,
+    net::connection::Connection,
     net::packet::{ClientPacket, PingPacket, ServerPacket},
     resources::{EntityMap, ProgramTime, TerrainMap},
     state::State,
@@ -25,9 +19,7 @@ use core::{
     SysResult,
 };
 use log::info;
-use noise::Perlin;
-use rayon::ThreadPool;
-use vek::Vec2;
+
 
 type ServerConnection = Connection<ServerPacket, ClientPacket>;
 

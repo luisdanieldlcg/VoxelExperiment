@@ -1,6 +1,6 @@
 use core::{
     event::Events,
-    resources::{EntityMap, TerrainMap},
+    resources::EntityMap,
     uid::Uid,
     SysResult,
 };
