@@ -1,6 +1,6 @@
 pub mod error;
 
-use std::{io::ErrorKind, net::SocketAddr, time::Duration};
+use std::{collections::HashSet, io::ErrorKind, net::SocketAddr, time::Duration};
 
 use apecs::{ok, CanFetch, Query, ShouldContinue, Write};
 use common::{
@@ -100,20 +100,33 @@ impl Client {
                         self.state.program_time() - self.last_ping_time;
                 },
                 ServerPacket::ChunkUpdate { pos, data } => {
-                    let terrain = self.state.resource_mut::<TerrainMap>();
                     let chunk = common::chunk::decompress(&data);
-                    terrain.chunks.insert(pos, chunk);
-                    terrain.pending_chunks.remove(&pos);
+                    let old = self
+                        .state
+                        .resource_mut::<TerrainMap>()
+                        .chunks
+                        .insert(pos, chunk);
+                    if let Some(old) = old {
+                        log::warn!("Overwriting chunk at {:?} with new chunk", pos);
+                    }
+                    self.state
+                        .resource_mut::<TerrainMap>()
+                        .pending_chunks
+                        .remove(&pos);
                 },
                 _ => (),
             }
         }
 
         let terrain = self.state.resource::<TerrainMap>();
-
+        // this may run multiple times per tick until the chunk arrives
+        // so we need to check if the chunk is already requested
         for pending in &terrain.pending_chunks {
-            self.send_packet(ClientPacket::ChunkRequest(*pending));
+            if !terrain.chunks.contains_key(pending) {
+                self.send_packet(ClientPacket::ChunkRequest(*pending));
+            }
         }
+
     }
 
     pub fn send_packet(&self, packet: ClientPacket) {
@@ -149,18 +162,21 @@ pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<S
         let render_dist = 8;
 
         let mut chunks_to_remove = Vec::with_capacity(system.terrain.chunks.len());
-        // unload chunks
-        system.terrain.chunks.iter().for_each(|(chunk_pos, _)| {
-            let dist = chunk_pos - player_chunk_pos;
-            let squared_dist = dist.x * dist.x + dist.y * dist.y;
-            if squared_dist > render_dist * render_dist {
-                chunks_to_remove.push(*chunk_pos);
+        for (pos, _) in system.terrain.chunks.iter() {
+            let dist = Vec2::new(
+                (pos.x - player_chunk_pos.x).abs(),
+                (pos.y - player_chunk_pos.y).abs(),
+            );
+
+            if dist.x > render_dist || dist.y > render_dist {
+                chunks_to_remove.push(*pos);
             }
-        });
+        }
 
         for chunk_pos in chunks_to_remove {
             system.terrain.chunks.remove(&chunk_pos);
             system.terrain_render.chunks.remove(&chunk_pos);
+            log::info!("Unloading chunk at {:?}", chunk_pos);
         }
 
         // load chunks
@@ -171,9 +187,12 @@ pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<S
 
         for x in start_x..=end_x {
             for z in start_z..=end_z {
-                let pos = Vec2::new(x, z);
-                if !system.terrain.chunks.contains_key(&pos) {
-                    system.terrain.pending_chunks.insert(pos);
+                let chunk_pos = Vec2::new(x, z);
+                if !system.terrain.chunks.contains_key(&chunk_pos)
+                    && !system.terrain.pending_chunks.contains(&chunk_pos)
+                {
+                    system.terrain.pending_chunks.insert(chunk_pos);
+                    log::info!("Loading chunk at {:?}", chunk_pos);
                 }
             }
         }

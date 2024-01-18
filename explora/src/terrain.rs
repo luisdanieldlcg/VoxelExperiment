@@ -21,7 +21,6 @@ pub struct TerrainSystem {
 pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
     let blocks = system.block_map.inner();
     let terrain = system.terrain_map.inner();
-    let time = std::time::Instant::now();
 
     for (pos, chunk) in terrain.chunks.iter() {
         let neighbors = [
@@ -45,8 +44,6 @@ pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
                 .insert(*pos, TerrainRenderData { buffer });
         }
     }
-
-    log::info!("Meshing took {}ms", time.elapsed().as_millis());
 
     ok()
 }
