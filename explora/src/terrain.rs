@@ -1,9 +1,7 @@
-use core::{resources::TerrainMap, SysResult};
+use common::{resources::TerrainMap, SysResult};
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use render::{
     resources::{TerrainRender, TerrainRenderData},
-    vertex::TerrainVertex,
     Renderer,
 };
 
@@ -25,51 +23,27 @@ pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
     let terrain = system.terrain_map.inner();
     let time = std::time::Instant::now();
 
-    // this is currently very slow
-    let iterator = terrain
-        .chunks
-        .par_iter()
-        .filter_map(|(pos, chunk)| {
-            if system.terrain_render_data.chunks.get(pos).is_none() {
-                // TODO: reuse mesh vector.
-                let mut meshes = vec![];
-                let mesh = mesh::create_chunk_mesh(chunk, *pos, terrain, blocks);
-                let buffer = system.renderer.create_vertex_buffer(&mesh);
-                meshes.push((buffer, *pos));
+    for (pos, chunk) in terrain.chunks.iter() {
+        let neighbors = [
+            terrain.chunks.get(&(pos + Vec2::new(0, 1))),
+            terrain.chunks.get(&(pos + Vec2::new(1, 0))),
+            terrain.chunks.get(&(pos + Vec2::new(0, -1))),
+            terrain.chunks.get(&(pos + Vec2::new(-1, 0))),
+        ];
 
-                // remesh neighbors
-                let neighbors = [
-                    Vec2::new(0, 1),
-                    Vec2::new(0, -1),
-                    Vec2::new(1, 0),
-                    Vec2::new(-1, 0),
-                ];
+        if neighbors.iter().any(|n| n.is_none()) {
+            continue;
+        }
 
-                // generate neighbor meshes
-                for dir in &neighbors {
-                    let neighbor_pos = *pos + *dir;
-                    if let Some(neighbor_chunk) = terrain.chunks.get(&neighbor_pos) {
-                        let mesh =
-                            mesh::create_chunk_mesh(neighbor_chunk, neighbor_pos, terrain, blocks);
-                        let buffer = system.renderer.create_vertex_buffer(&mesh);
-                        meshes.push((buffer, neighbor_pos));
-                    }
-                }
-                return Some(meshes);
-            }
-            None
-        })
-        .flatten()
-        .collect::<Vec<_>>();
-
-    for (buffer, chunk_pos) in iterator {
-        system
-            .renderer
-            .check_index_buffer::<TerrainVertex>(buffer.len() as usize);
-        system
-            .terrain_render_data
-            .chunks
-            .insert(chunk_pos, TerrainRenderData { buffer });
+        if system.terrain_render_data.chunks.get(pos).is_none() {
+            // create the mesh of the chunk
+            let mesh = mesh::create_chunk_mesh(chunk, *pos, &system.terrain_map, blocks);
+            let buffer = system.renderer.create_vertex_buffer(&mesh);
+            system
+                .terrain_render_data
+                .chunks
+                .insert(*pos, TerrainRenderData { buffer });
+        }
     }
 
     log::info!("Meshing took {}ms", time.elapsed().as_millis());

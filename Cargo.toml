@@ -4,7 +4,7 @@ default-members = [
     "explora",
 ]
 members = [
-    "core",
+    "common",
     "explora",
     "render",
     "server",

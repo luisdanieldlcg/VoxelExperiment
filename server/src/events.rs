@@ -1,4 +1,4 @@
-use core::{event::Events, resources::EntityMap, uid::Uid, SysResult};
+use common::{event::Events, resources::EntityMap, uid::Uid, SysResult};
 
 use apecs::{ok, Write, *};
 

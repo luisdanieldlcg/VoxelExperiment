@@ -1,4 +1,4 @@
-use core::clock::Clock;
+use common::clock::Clock;
 use server::{config::ServerConfig, Server};
 
 fn main() {

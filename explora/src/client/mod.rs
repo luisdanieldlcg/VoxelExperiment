@@ -3,7 +3,7 @@ pub mod error;
 use std::{io::ErrorKind, net::SocketAddr, time::Duration};
 
 use apecs::{ok, CanFetch, Query, ShouldContinue, Write};
-use core::{
+use common::{
     components::Pos,
     net::{
         connection::Connection,
@@ -101,7 +101,7 @@ impl Client {
                 },
                 ServerPacket::ChunkUpdate { pos, data } => {
                     let terrain = self.state.resource_mut::<TerrainMap>();
-                    let chunk = core::chunk::decompress(&data);
+                    let chunk = common::chunk::decompress(&data);
                     terrain.chunks.insert(pos, chunk);
                     terrain.pending_chunks.remove(&pos);
                 },

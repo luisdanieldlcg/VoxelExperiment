@@ -1,7 +1,6 @@
-use core::{clock::Clock, resources::GameMode, SysResult};
+use common::{clock::Clock, resources::GameMode, SysResult};
 use explora::{
     block::{self, BlockMap},
-    camera::Camera,
     client::Client,
     input::{self, Input, KeyboardInput},
     scene,
@@ -74,7 +73,7 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_event::<WindowEvent>("window_event")
         .with_event::<KeyboardInput>("keyboard_input_event");
 
-    core::state::print_system_schedule(client.state_mut().ecs_mut());
+    common::state::print_system_schedule(client.state_mut().ecs_mut());
 
     Ok(())
 }
@@ -91,9 +90,5 @@ struct SetupSystem {
 fn setup(mut sys: SetupSystem) -> SysResult {
     sys.window.grab_cursor(true);
     *sys.block_map = block::load_blocks("assets/blocks", &sys.renderer.block_atlas().tiles);
-    let window_size = sys.window.inner_size().map(|x| x as f32);
-    let aspect_ratio = window_size.x / window_size.y;
-    let mut camera = Camera::new(aspect_ratio);
-    camera.rotate(0.0, 0.0);
     end()
 }

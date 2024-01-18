@@ -1,4 +1,4 @@
-use core::chunk::Chunk;
+use common::chunk::Chunk;
 
 use noise::{BasicMulti, Perlin};
 use vek::Vec2;

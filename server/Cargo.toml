@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
-core = { path = "../core", package = "explora_core" }
+common = { path = "../common", package = "explora_common" }
 apecs = { workspace = true }
 serde = { workspace = true }
 toml = { workspace = true }

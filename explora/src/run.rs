@@ -1,4 +1,4 @@
-use core::{clock::Clock, event::Events};
+use common::{clock::Clock, event::Events};
 use log::info;
 use render::{resources::EguiContext, Renderer};
 use vek::Vec2;

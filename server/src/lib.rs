@@ -5,8 +5,7 @@ pub mod world;
 use std::{net::SocketAddr, time::Duration};
 
 use apecs::CanFetch;
-use config::ServerConfig;
-use core::{
+use common::{
     event::Events,
     net::connection::Connection,
     net::packet::{ClientPacket, PingPacket, ServerPacket},
@@ -15,6 +14,7 @@ use core::{
     uid::Uid,
     SysResult,
 };
+use config::ServerConfig;
 use log::info;
 
 type ServerConnection = Connection<ServerPacket, ClientPacket>;
@@ -63,7 +63,7 @@ impl Server {
             )?;
 
         state.with_event::<ServerEvent>("server_events");
-        core::state::print_system_schedule(state.ecs_mut());
+        common::state::print_system_schedule(state.ecs_mut());
 
         Ok(Self { state })
     }
@@ -125,7 +125,7 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
 
             ClientPacket::ChunkRequest(pos) => match sys.terrain.chunks.get(&pos) {
                 Some(t) => {
-                    let c = core::chunk::compress(t);
+                    let c = common::chunk::compress(t);
                     let packet = ServerPacket::ChunkUpdate { pos, data: c };
                     if let Err(e) = sys.connection.send_to(packet, addr) {
                         log::error!("Failed to send chunk update packet to client: {:?}", e);
@@ -133,7 +133,7 @@ pub fn handle_incoming_packets(mut sys: HandleIncomingPacketsSystem) -> SysResul
                 },
                 None => {
                     let chunk = sys.terrain_generator.generate_chunk(pos);
-                    let c = core::chunk::compress(&chunk);
+                    let c = common::chunk::compress(&chunk);
                     let packet = ServerPacket::ChunkUpdate { pos, data: c };
                     sys.terrain.chunks.insert(pos, chunk);
                     if let Err(e) = sys.connection.send_to(packet, addr) {

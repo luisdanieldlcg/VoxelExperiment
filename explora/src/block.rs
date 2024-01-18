@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use core::block::BlockId;
+use common::block::BlockId;
 use log::info;
 use render::atlas::AtlasRect;
 use serde::{Deserialize, Serialize};
