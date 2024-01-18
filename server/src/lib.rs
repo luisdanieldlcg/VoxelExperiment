@@ -2,10 +2,7 @@ pub mod config;
 pub mod events;
 pub mod world;
 
-use std::{
-    net::SocketAddr,
-    time::Duration,
-};
+use std::{net::SocketAddr, time::Duration};
 
 use apecs::CanFetch;
 use config::ServerConfig;
@@ -19,7 +16,6 @@ use core::{
     SysResult,
 };
 use log::info;
-
 
 type ServerConnection = Connection<ServerPacket, ClientPacket>;
 

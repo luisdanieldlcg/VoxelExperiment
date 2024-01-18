@@ -296,28 +296,27 @@ impl Renderer {
     }
 
     pub fn check_index_buffer<V: Vertex>(&mut self, len: usize) {
-        let l = len / 6 * 4;
+        let vertex_length = len / 4 * 6;
         match V::INDEX_BUFFER {
             Some(wgpu::IndexFormat::Uint16) => {
                 // TODO: create u16 index buffer
             },
             Some(wgpu::IndexFormat::Uint32) => {
-                if self.terrain_index_buffer.len() > l as u32 {
-                    return;
-                }
-                if len > u32::MAX as usize {
-                    panic!(
-                        "Too many vertices for {} using u32 index buffer. Count: {}",
+                if self.terrain_index_buffer.len() < vertex_length as u32 {
+                    if len > u32::MAX as usize {
+                        panic!(
+                            "Too many vertices for {} using u32 index buffer. Count: {}",
+                            core::any::type_name::<V>(),
+                            len
+                        );
+                    }
+                    log::info!(
+                        "Recreating index buffer for {}, with {} vertices",
                         core::any::type_name::<V>(),
                         len
                     );
+                    self.terrain_index_buffer = compute_terrain_indices(&self.device, len);
                 }
-                log::info!(
-                    "Recreating index buffer for {}, with {} vertices",
-                    core::any::type_name::<V>(),
-                    len
-                );
-                self.terrain_index_buffer = compute_terrain_indices(&self.device, len);
             },
 
             None => (),
@@ -447,7 +446,7 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
 
         for terrain_data in system.terrain.chunks.values() {
             render_pass.set_vertex_buffer(0, terrain_data.buffer.slice());
-            render_pass.draw_indexed(0..renderer.terrain_index_buffer.len(), 0, 0..1);
+            render_pass.draw_indexed(0..terrain_data.buffer.len() / 4 * 6, 0, 0..1);
         }
     }
 
