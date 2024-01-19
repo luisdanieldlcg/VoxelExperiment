@@ -1,6 +1,6 @@
 use vek::Vec3;
 
-use crate::Vertex;
+use crate::render::Vertex;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod)]

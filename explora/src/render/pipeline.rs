@@ -1,4 +1,4 @@
-use crate::{texture, vertex::TerrainVertex, Vertex};
+use crate::render::{texture, vertex::TerrainVertex, Vertex};
 
 pub struct TerrainPipeline {
     pub pipeline: wgpu::RenderPipeline,

@@ -1,4 +1,4 @@
-use crate::{atlas::BlockAtlas, buffer::Buffer, GpuGlobals};
+use crate::render::{atlas::BlockAtlas, buffer::Buffer, GpuGlobals};
 
 pub fn core_bind_group_layouts() -> Vec<wgpu::BindGroupLayoutEntry> {
     vec![

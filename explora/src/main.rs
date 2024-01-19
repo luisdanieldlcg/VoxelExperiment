@@ -1,4 +1,5 @@
 use common::{clock::Clock, resources::GameMode, SysResult};
+use explora::render::Renderer;
 use explora::{
     block::{self, BlockMap},
     client::Client,
@@ -8,8 +9,6 @@ use explora::{
     ui::EguiInput,
     window::{Window, WindowEvent},
 };
-use render::Renderer;
-
 fn main() -> anyhow::Result<()> {
     common::init_logger("wgpu=warn");
 
@@ -53,12 +52,17 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
             &[],
         )?
         .with_system_with_dependencies(
-            render::SYSTEM_STAGE_UI_DRAW_WIDGETS,
+            explora::render::SYSTEM_STAGE_UI_DRAW_WIDGETS,
             explora::ui::ui_debug_render_system,
             &[],
             &[],
         )?
-        .with_system_with_dependencies("setup", setup, &[], &[render::SYSTEM_STAGE_PRE_RENDER])?
+        .with_system_with_dependencies(
+            "setup",
+            setup,
+            &[],
+            &[explora::render::SYSTEM_STAGE_PRE_RENDER],
+        )?
         .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
         .with_system("game_input", input::game_input_system)?

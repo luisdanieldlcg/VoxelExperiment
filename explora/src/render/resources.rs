@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use vek::Vec2;
 
-use crate::{buffer::Buffer, vertex::TerrainVertex};
+use crate::render::{buffer::Buffer, vertex::TerrainVertex};
 
 #[derive(Default)]
 pub struct TerrainRender {

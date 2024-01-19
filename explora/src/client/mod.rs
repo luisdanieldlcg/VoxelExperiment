@@ -1,7 +1,8 @@
 pub mod error;
 
-use std::{collections::HashSet, io::ErrorKind, net::SocketAddr, time::Duration};
+use std::{io::ErrorKind, net::SocketAddr, time::Duration};
 
+use crate::render::resources::TerrainRender;
 use apecs::{ok, CanFetch, Query, ShouldContinue, Write};
 use common::{
     components::Pos,
@@ -14,7 +15,6 @@ use common::{
     state::State,
 };
 use log::info;
-use render::resources::TerrainRender;
 use vek::Vec2;
 
 use crate::camera::Camera;
@@ -126,7 +126,6 @@ impl Client {
                 self.send_packet(ClientPacket::ChunkRequest(*pending));
             }
         }
-
     }
 
     pub fn send_packet(&self, packet: ClientPacket) {

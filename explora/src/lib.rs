@@ -4,6 +4,7 @@ pub mod client;
 pub mod error;
 pub mod input;
 pub mod mesh;
+pub mod render;
 pub mod run;
 pub mod scene;
 pub mod singleplayer;

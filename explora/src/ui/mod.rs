@@ -6,8 +6,10 @@ use common::{
 
 use apecs::{NoDefault, Read};
 
-use render::resources::{EguiContext, EguiSettings};
+use crate::render::resources::{EguiContext, EguiSettings};
 use vek::Vec2;
+
+use crate::render::{GpuGlobals, Renderer};
 
 use crate::{camera::Camera, window::Window};
 
@@ -16,9 +18,9 @@ pub struct EguiState {
 }
 
 impl EguiState {
-    pub fn new(window: &winit::window::Window) -> Self {
+    pub fn new(ctx: &egui::Context, window: &winit::window::Window) -> Self {
         Self {
-            state: egui_winit::State::new(window),
+            state: egui_winit::State::new(ctx.clone(), ctx.viewport_id(), window, None, None),
         }
     }
 }
@@ -44,9 +46,9 @@ pub struct EguiRenderSystem {
     egui_context: Read<EguiContext>,
     clock: Read<Clock>,
     camera: Query<&'static mut Camera>,
-    renderer: Write<render::Renderer, NoDefault>,
+    renderer: Write<Renderer, NoDefault>,
     window: Read<Window, NoDefault>,
-    globals: Write<render::GpuGlobals>,
+    globals: Write<GpuGlobals>,
     ping: Read<Ping>,
     mode: Read<GameMode, NoDefault>,
 }

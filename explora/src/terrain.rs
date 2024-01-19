@@ -1,6 +1,6 @@
 use common::{resources::TerrainMap, SysResult};
 
-use render::{
+use crate::render::{
     resources::{TerrainRender, TerrainRenderData},
     Renderer,
 };

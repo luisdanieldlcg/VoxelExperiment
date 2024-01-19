@@ -1,6 +1,6 @@
 use apecs::{anyhow::Result, *};
 
-use crate::{
+use crate::render::{
     resources::{EguiContext, EguiSettings},
     CommandEncoder, RenderTexture, Renderer,
 };
@@ -20,7 +20,9 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
 
     let egui_context = ui.egui_context.inner_mut();
     let output = egui_context.get_mut().end_frame();
-    let paint_jobs = egui_context.get_mut().tessellate(output.shapes);
+    let paint_jobs = egui_context
+        .get_mut()
+        .tessellate(output.shapes, output.pixels_per_point);
 
     for (id, delta) in output.textures_delta.set {
         ui.renderer.update_ui_texture(id, &delta);
@@ -41,13 +43,12 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Load,
-                // store: wgpu::StoreOp::Store,
-                store: true,
+                store: wgpu::StoreOp::Store,
             },
         })],
         depth_stencil_attachment: None,
-        // occlusion_query_set: None,
-        // timestamp_writes: None,
+        occlusion_query_set: None,
+        timestamp_writes: None,
     });
 
     ui.renderer

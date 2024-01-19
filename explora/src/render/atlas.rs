@@ -25,7 +25,7 @@ pub struct AtlasRect {
 }
 
 pub struct BlockAtlas {
-    pub texture: crate::Texture,
+    pub texture: crate::render::Texture,
     pub tiles: Vec<AtlasRect>,
     pub size: vek::Extent2<u32>,
 }
@@ -113,8 +113,11 @@ impl BlockAtlas {
 
         debug!("{} textures loaded.", id);
 
-        let atlas_texture =
-            crate::Texture::new(device, queue, image::DynamicImage::ImageRgba8(atlas_buffer));
+        let atlas_texture = crate::render::Texture::new(
+            device,
+            queue,
+            image::DynamicImage::ImageRgba8(atlas_buffer),
+        );
 
         Ok(Self {
             texture: atlas_texture,

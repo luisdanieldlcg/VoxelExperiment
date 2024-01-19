@@ -1,5 +1,5 @@
+use crate::render::vertex::TerrainVertex;
 use common::{chunk::Chunk, dir::Direction, resources::TerrainMap};
-use render::vertex::TerrainVertex;
 use vek::{Vec2, Vec3};
 
 use crate::block::BlockMap;

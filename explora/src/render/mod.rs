@@ -91,9 +91,9 @@ impl Renderer {
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
-            // flags: wgpu::InstanceFlags::default(),
+            flags: wgpu::InstanceFlags::default(),
             dx12_shader_compiler: wgpu::Dx12Compiler::default(),
-            // gles_minor_version: wgpu::Gles3MinorVersion::default(),
+            gles_minor_version: wgpu::Gles3MinorVersion::default(),
         });
 
         let surface = unsafe { instance.create_surface(window) }.unwrap();
@@ -144,8 +144,8 @@ impl Renderer {
         };
         surface.configure(&device, &config);
 
-        let shader =
-            device.create_shader_module(wgpu::include_wgsl!("../../assets/shaders/terrain.wgsl"));
+        let shader = device
+            .create_shader_module(wgpu::include_wgsl!("../../../assets/shaders/terrain.wgsl"));
 
         let globals_buffer = Buffer::new(
             &device,
@@ -414,21 +414,19 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
                     b: 0.3,
                     a: 1.0,
                 }),
-                // store: wgpu::StoreOp::Store,
-                store: true,
+                store: wgpu::StoreOp::Store,
             },
         })],
         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
             view: &system.renderer.depth_texture.view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
-                // store: wgpu::StoreOp::Store,
-                store: true,
+                store: wgpu::StoreOp::Store,
             }),
             stencil_ops: None,
         }),
-        // occlusion_query_set: None,
-        // timestamp_writes: None,
+        occlusion_query_set: None,
+        timestamp_writes: None,
     });
 
     if !system.terrain.chunks.is_empty() {

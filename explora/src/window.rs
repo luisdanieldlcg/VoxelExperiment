@@ -29,7 +29,7 @@ pub struct Window {
 
 impl Window {
     pub fn new() -> Result<(Self, EventLoop<()>), Error> {
-        let event_loop = winit::event_loop::EventLoop::new();
+        let event_loop = winit::event_loop::EventLoop::new().unwrap();
         let platform = winit::window::WindowBuilder::new()
             .with_title("Explora")
             .with_inner_size(winit::dpi::PhysicalSize::new(1920, 1080))

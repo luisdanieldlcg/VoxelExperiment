@@ -5,7 +5,7 @@ use vek::Vec2;
 #[derive(Debug, Clone, Copy)]
 pub struct KeyboardInput {
     pub scan_code: u32,
-    pub key_code: Option<KeyCode>,
+    pub key_code: Option<Key>,
     pub state: bool,
 }
 
@@ -59,26 +59,25 @@ impl Default for Input {
     }
 }
 
-// type KeyCode = winit::keyboard::KeyCode;
-type KeyCode = winit::event::VirtualKeyCode;
+type Key = winit::keyboard::KeyCode;
 
 impl Input {
-    pub fn press(&mut self, input: KeyCode) {
+    pub fn press(&mut self, input: Key) {
         if !self.pressed[input as usize] {
             self.just_pressed[input as usize] = true;
         }
         self.pressed[input as usize] = true;
     }
 
-    pub fn pressed(&self, input: KeyCode) -> bool {
+    pub fn pressed(&self, input: Key) -> bool {
         self.pressed[input as usize]
     }
 
-    pub fn release(&mut self, input: KeyCode) {
+    pub fn release(&mut self, input: Key) {
         self.pressed[input as usize] = false;
     }
 
-    pub fn just_pressed(&self, input: KeyCode) -> bool {
+    pub fn just_pressed(&self, input: Key) -> bool {
         self.just_pressed[input as usize]
     }
 
@@ -91,8 +90,8 @@ impl Input {
             winit::event::MouseButton::Left => self.buttons[0],
             winit::event::MouseButton::Right => self.buttons[1],
             winit::event::MouseButton::Middle => self.buttons[2],
-            // winit::event::MouseButton::Back => self.buttons[3],
-            // winit::event::MouseButton::Forward => self.buttons[4],
+            winit::event::MouseButton::Back => self.buttons[3],
+            winit::event::MouseButton::Forward => self.buttons[4],
             winit::event::MouseButton::Other(code) => self.buttons[code as usize],
         }
     }
@@ -112,15 +111,15 @@ pub struct GameInputSystem {
     input: Write<Input>,
 }
 
-const INPUT_MAPPING: [(KeyCode, GameInput); 8] = [
-    (KeyCode::W, GameInput::MoveForward),
-    (KeyCode::S, GameInput::MoveBackward),
-    (KeyCode::A, GameInput::MoveLeft),
-    (KeyCode::D, GameInput::MoveRight),
-    (KeyCode::Space, GameInput::Jump),
-    (KeyCode::LShift, GameInput::Sneak),
-    (KeyCode::Period, GameInput::ToggleCursor),
-    (KeyCode::F12, GameInput::ToggleWireframe),
+const INPUT_MAPPING: [(Key, GameInput); 8] = [
+    (Key::KeyW, GameInput::MoveForward),
+    (Key::KeyS, GameInput::MoveBackward),
+    (Key::KeyA, GameInput::MoveLeft),
+    (Key::KeyD, GameInput::MoveRight),
+    (Key::Space, GameInput::Jump),
+    (Key::ShiftLeft, GameInput::Sneak),
+    (Key::Period, GameInput::ToggleCursor),
+    (Key::F12, GameInput::ToggleWireframe),
 ];
 
 pub fn game_input_system(mut system: GameInputSystem) -> SysResult {

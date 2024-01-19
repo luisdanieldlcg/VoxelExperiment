@@ -6,7 +6,6 @@ default-members = [
 members = [
     "common",
     "explora",
-    "render",
     "server",
     "server-cli"
 ]
@@ -15,7 +14,7 @@ members = [
 log = "0.4.20"
 vek = "0.16.1"
 apecs = "0.7.0"
-serde = "1.0.190"
-toml = "0.8.6"
+serde = "1.0.195"
+toml = "0.8.8"
 noise = "0.8.2"
 bincode = "1.3.3"

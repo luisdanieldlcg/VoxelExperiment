@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-render = { path = "../render", package = "explora_render" }
 common = { path = "../common", package = "explora_common" }
 server = { path = "../server", package = "explora_server" }
 log = { workspace = true }
@@ -15,8 +14,13 @@ apecs = { workspace = true }
 toml = { workspace = true }
 serde = { workspace = true }
 noise = { workspace = true }
-winit = "0.28.7"
+winit = "0.29.10"
 rand = "0.8.5"
-egui = "0.23.0"
-egui-winit = "0.23.0"
-rayon = "1.8.0"
+egui = "0.25.0"
+egui-winit = "0.25.0"
+egui-wgpu = "0.25.0"
+rayon = "1.8.1"
+pollster = "0.3.0"
+wgpu = "0.18.0" 
+bytemuck = { version = "1.14.0", features = ["derive"] }
+image = "0.24.8"

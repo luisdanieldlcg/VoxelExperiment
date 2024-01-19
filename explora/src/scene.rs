@@ -2,7 +2,7 @@ use common::{event::Events, resources::DeltaTime, SysResult};
 
 use apecs::*;
 
-use render::{resources::TerrainRender, GpuGlobals, Renderer};
+use crate::render::{resources::TerrainRender, GpuGlobals, Renderer};
 use vek::Vec3;
 
 use crate::{

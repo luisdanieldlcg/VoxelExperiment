@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
+use crate::render::atlas::AtlasRect;
 use common::block::BlockId;
 use log::info;
-use render::atlas::AtlasRect;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default)]

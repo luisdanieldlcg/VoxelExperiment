@@ -1,5 +1,4 @@
 pub struct Texture {
-    pub(crate) handle: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
     pub(crate) sampler: wgpu::Sampler,
 }
@@ -70,11 +69,7 @@ impl Texture {
             ..Default::default()
         });
 
-        Self {
-            handle,
-            view,
-            sampler,
-        }
+        Self { view, sampler }
     }
 
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -109,10 +104,6 @@ impl Texture {
             lod_max_clamp: 100.0,
             ..Default::default()
         });
-        Self {
-            handle: texture,
-            view,
-            sampler,
-        }
+        Self { view, sampler }
     }
 }
