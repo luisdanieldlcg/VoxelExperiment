@@ -1,32 +1,6 @@
-use apecs::{CanFetch, Write};
-use common::{event::Events, SysResult};
-use vek::Vec2;
-
-#[derive(Debug, Clone, Copy)]
-pub struct KeyboardInput {
-    pub scan_code: u32,
-    pub key_code: Option<Key>,
-    pub state: bool,
-}
-
-#[derive(CanFetch)]
-pub struct KeyboardInputSystem {
-    events: Write<Events<KeyboardInput>>,
-    input: Write<Input>,
-}
-
-pub fn keyboard_input_system(mut state: KeyboardInputSystem) -> SysResult {
-    state.input.update();
-    for event in state.events.events.iter() {
-        if let Some(key_code) = event.key_code {
-            match event.state {
-                true => state.input.press(key_code),
-                false => state.input.release(key_code),
-            }
-        }
-    }
-    ok()
-}
+use apecs::{ok, Write};
+use common::SysResult;
+use vek::{Vec2, Vec3};
 
 #[derive(Debug, Clone, Copy)]
 pub enum GameInput {
@@ -62,6 +36,7 @@ impl Default for Input {
 type Key = winit::keyboard::KeyCode;
 
 impl Input {
+    
     pub fn press(&mut self, input: Key) {
         if !self.pressed[input as usize] {
             self.just_pressed[input as usize] = true;
@@ -69,23 +44,39 @@ impl Input {
         self.pressed[input as usize] = true;
     }
 
-    pub fn pressed(&self, input: Key) -> bool {
-        self.pressed[input as usize]
+    pub const fn move_direction(&self) -> Vec3<f32> {
+        vek::Vec3::new(
+            (self.pressed(GameInput::MoveRight) as i32 - self.pressed(GameInput::MoveLeft) as i32)
+                as f32,
+            (self.pressed(GameInput::Jump) as i32 - self.pressed(GameInput::Sneak) as i32) as f32,
+            (self.pressed(GameInput::MoveForward) as i32
+                - self.pressed(GameInput::MoveBackward) as i32) as f32,
+        )
+    }
+
+    pub const fn pressed(&self, input: GameInput) -> bool {
+        match key_mapping(input) {
+            Some(key) => self.pressed[key as usize],
+            None => false,
+        }
+    }
+
+    pub const fn just_pressed(&self, input: GameInput) -> bool {
+        match key_mapping(input) {
+            Some(key) => self.just_pressed[key as usize],
+            None => false,
+        }
     }
 
     pub fn release(&mut self, input: Key) {
         self.pressed[input as usize] = false;
     }
 
-    pub fn just_pressed(&self, input: Key) -> bool {
-        self.just_pressed[input as usize]
-    }
-
     pub fn update(&mut self) {
         self.just_pressed = [false; 256];
     }
 
-    pub fn is_button_down(&self, button: winit::event::MouseButton) -> bool {
+    pub const fn is_button_down(&self, button: winit::event::MouseButton) -> bool {
         match button {
             winit::event::MouseButton::Left => self.buttons[0],
             winit::event::MouseButton::Right => self.buttons[1],
@@ -101,35 +92,20 @@ impl Input {
     }
 }
 
-use apecs::*;
-
-use crate::window::WindowEvent;
-
-#[derive(CanFetch)]
-pub struct GameInputSystem {
-    events: Write<Events<WindowEvent>>,
-    input: Write<Input>,
+const fn key_mapping(key: GameInput) -> Option<Key> {
+    match key {
+        GameInput::MoveForward => Some(Key::KeyW),
+        GameInput::MoveBackward => Some(Key::KeyS),
+        GameInput::MoveLeft => Some(Key::KeyA),
+        GameInput::MoveRight => Some(Key::KeyD),
+        GameInput::Jump => Some(Key::Space),
+        GameInput::Sneak => Some(Key::ShiftLeft),
+        GameInput::ToggleCursor => Some(Key::Period),
+        GameInput::ToggleWireframe => Some(Key::F12),
+    }
 }
 
-const INPUT_MAPPING: [(Key, GameInput); 8] = [
-    (Key::KeyW, GameInput::MoveForward),
-    (Key::KeyS, GameInput::MoveBackward),
-    (Key::KeyA, GameInput::MoveLeft),
-    (Key::KeyD, GameInput::MoveRight),
-    (Key::Space, GameInput::Jump),
-    (Key::ShiftLeft, GameInput::Sneak),
-    (Key::Period, GameInput::ToggleCursor),
-    (Key::F12, GameInput::ToggleWireframe),
-];
-
-pub fn game_input_system(mut system: GameInputSystem) -> SysResult {
-    for (key, input) in INPUT_MAPPING.iter() {
-        if system.input.just_pressed(*key) {
-            system.events.send(WindowEvent::JustPressed(*input));
-        }
-        if system.input.pressed(*key) {
-            system.events.send(WindowEvent::KeyPress(*input));
-        }
-    }
+pub fn input_system(mut input: Write<Input>) -> SysResult {
+    input.update();
     ok()
 }

@@ -175,7 +175,7 @@ pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<S
         for chunk_pos in chunks_to_remove {
             system.terrain.chunks.remove(&chunk_pos);
             system.terrain_render.chunks.remove(&chunk_pos);
-            log::info!("Unloading chunk at {:?}", chunk_pos);
+            // log::info!("Unloading chunk at {:?}", chunk_pos);
         }
 
         // load chunks
@@ -191,7 +191,7 @@ pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<S
                     && !system.terrain.pending_chunks.contains(&chunk_pos)
                 {
                     system.terrain.pending_chunks.insert(chunk_pos);
-                    log::info!("Loading chunk at {:?}", chunk_pos);
+                    // log::info!("Loading chunk at {:?}", chunk_pos);
                 }
             }
         }

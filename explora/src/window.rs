@@ -1,4 +1,4 @@
-use crate::{error::Error, input::GameInput};
+use crate::error::Error;
 
 use vek::Vec2;
 use winit::event_loop::EventLoop;
@@ -12,14 +12,6 @@ pub enum WindowEvent {
     Resize(Vec2<u32>),
     /// The cursor has been moved.
     CursorMove(Vec2<f32>),
-    /// A game key has been pressed.
-    ///
-    /// This is true for every frame that the key is pressed.
-    KeyPress(GameInput),
-    /// A game key has just been pressed.
-    ///
-    /// This is only true for the first frame that the key is pressed.
-    JustPressed(GameInput),
 }
 
 pub struct Window {

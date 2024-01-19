@@ -1,9 +1,10 @@
 use common::{clock::Clock, resources::GameMode, SysResult};
 use explora::render::Renderer;
+
 use explora::{
     block::{self, BlockMap},
     client::Client,
-    input::{self, Input, KeyboardInput},
+    input::{self, Input},
     scene,
     singleplayer::Singleplayer,
     ui::EguiInput,
@@ -63,16 +64,12 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
             &[],
             &[explora::render::SYSTEM_STAGE_PRE_RENDER],
         )?
-        .with_system("keyboard_input_process", input::keyboard_input_system)?
         .with_system_barrier()
-        .with_system("game_input", input::game_input_system)?
-        .with_system("scene_update", scene::scene_update_system)?;
+        .with_system("scene_update", scene::scene_update_system)?
+        .with_system_barrier()
+        .with_system("input", input::input_system)?;
 
-    client
-        .state_mut()
-        .with_event::<WindowEvent>("window_event")
-        .with_event::<KeyboardInput>("keyboard_input_event");
-
+    client.state_mut().with_event::<WindowEvent>("window_event");
     common::state::print_system_schedule(client.state_mut().ecs_mut());
 
     Ok(())

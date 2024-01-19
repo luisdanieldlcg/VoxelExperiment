@@ -13,7 +13,7 @@ pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;
 
 pub fn init_logger(filters: &str) {
     env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(log::LevelFilter::Debug)
         .parse_filters(filters)
         .init();
 }

@@ -9,10 +9,10 @@ use winit::{
 
 use crate::{
     client::Client,
-    input::KeyboardInput,
+    input::Input,
+    render::{resources::EguiContext, Renderer},
     ui::{EguiInput, EguiState},
     window::{Window, WindowEvent},
-    render::{resources::EguiContext, Renderer}
 };
 
 pub fn run(event_loop: EventLoop<()>, mut client: Client) {
@@ -35,7 +35,6 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                         // If the input was consumed by egui, we don't want to process it.
                         return;
                     }
-
                     if window.platform().id() == window_id {
                         match event {
                             winit::event::WindowEvent::CloseRequested => elwt.exit(),
@@ -48,6 +47,7 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                                 let new_size = Vec2::new(size.width, size.height);
                                 events.send(WindowEvent::Resize(new_size));
                             },
+
                             winit::event::WindowEvent::ScaleFactorChanged { .. } => {
                                 let size = window.platform().inner_size();
                                 let events =
@@ -55,15 +55,18 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                                 events
                                     .send(WindowEvent::Resize(Vec2::new(size.width, size.height)));
                             },
+
                             winit::event::WindowEvent::KeyboardInput { event, .. } => {
                                 if let PhysicalKey::Code(code) = event.physical_key {
-                                    let keyboard_input =
-                                        client.state_mut().resource_mut::<Events<KeyboardInput>>();
-                                    keyboard_input.send(KeyboardInput {
-                                        scan_code: 0,
-                                        key_code: Some(code),
-                                        state: event.state == winit::event::ElementState::Pressed,
-                                    });
+                                    let input = client.state_mut().resource_mut::<Input>();
+                                    match event.state {
+                                        winit::event::ElementState::Pressed => {
+                                            input.press(code);
+                                        },
+                                        winit::event::ElementState::Released => {
+                                            input.release(code);
+                                        },
+                                    }
                                 }
                             },
                             winit::event::WindowEvent::RedrawRequested => {

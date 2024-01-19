@@ -2,7 +2,10 @@ use common::{event::Events, resources::DeltaTime, SysResult};
 
 use apecs::*;
 
-use crate::render::{resources::TerrainRender, GpuGlobals, Renderer};
+use crate::{
+    input::Input,
+    render::{resources::TerrainRender, GpuGlobals, Renderer},
+};
 use vek::Vec3;
 
 use crate::{
@@ -20,14 +23,22 @@ pub struct SceneSystem {
     terrain_render_data: Write<TerrainRender>,
     window: Write<Window, NoDefault>,
     renderer: Write<Renderer, NoDefault>,
+    input: Read<Input>,
 }
 
 pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
-    let mut dir = Vec3::<f32>::zero();
+    let dir = scene.input.move_direction();
+
+    if scene.input.just_pressed(GameInput::ToggleCursor) {
+        scene.window.toggle_cursor();
+    }
+
+    if scene.input.just_pressed(GameInput::ToggleWireframe) {
+        scene.terrain_render_data.wireframe = !scene.terrain_render_data.wireframe;
+    }
 
     for event in &scene.events.events {
         match event {
-            WindowEvent::Close => {},
             WindowEvent::Resize(size) => {
                 for camera in scene.camera.query().iter_mut() {
                     camera.set_aspect_ratio(size.x as f32 / size.y as f32);
@@ -42,42 +53,12 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
                     }
                 }
             },
-            WindowEvent::KeyPress(input) => {
-                let val = 1.0;
-                match input {
-                    GameInput::MoveForward => {
-                        dir.z += val;
-                    },
-                    GameInput::MoveBackward => {
-                        dir.z -= val;
-                    },
-                    GameInput::MoveLeft => {
-                        dir.x -= val;
-                    },
-                    GameInput::MoveRight => {
-                        dir.x += val;
-                    },
-                    GameInput::Jump => {
-                        dir.y += val;
-                    },
-                    GameInput::Sneak => {
-                        dir.y -= val;
-                    },
-                    _ => (),
-                }
-            },
-            WindowEvent::JustPressed(key) => {
-                if let GameInput::ToggleWireframe = key {
-                    scene.terrain_render_data.wireframe = !scene.terrain_render_data.wireframe;
-                }
-                if let GameInput::ToggleCursor = key {
-                    scene.window.toggle_cursor();
-                }
-            },
+            _ => {},
         }
     }
 
     let mut cameras = scene.camera.query();
+
     for camera in cameras.iter_mut() {
         camera.update(scene.delta.0, dir);
         let matrices = camera.build_matrices();
