@@ -10,3 +10,10 @@ pub mod state;
 pub mod uid;
 
 pub type SysResult = apecs::anyhow::Result<apecs::ShouldContinue>;
+
+pub fn init_logger(filters: &str) {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .parse_filters(filters)
+        .init();
+}

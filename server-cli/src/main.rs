@@ -2,9 +2,7 @@ use common::clock::Clock;
 use server::{config::ServerConfig, Server};
 
 fn main() {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .init();
+    common::init_logger("");
 
     let config = ServerConfig::toml();
     let mut server = Server::new(config).unwrap();

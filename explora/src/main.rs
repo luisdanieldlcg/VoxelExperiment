@@ -11,11 +11,7 @@ use explora::{
 use render::Renderer;
 
 fn main() -> anyhow::Result<()> {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .filter_module("wgpu", log::LevelFilter::Warn)
-        .filter_module("naga", log::LevelFilter::Info)
-        .init();
+    common::init_logger("wgpu=warn");
 
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 apecs = { workspace = true }
 log = { workspace = true }
+env_logger = "0.10.2"
 rand = "0.8.5"
 vek = { workspace = true }
 noise = { workspace = true }
