@@ -8,11 +8,13 @@ struct Globals {
 @group(0) @binding(0)
 var<uniform> globals: Globals;
 
+@group(1) @binding(0)
+var<uniform> chunk_pos: vec2<i32>;
+
 struct VertexInput {
     @builtin(vertex_index) v_index: u32,
-    @location(0) vertices: vec3<f32>,
-    @location(1) texture_id: u32,
-    @location(2) normal: vec3<i32>,
+    @location(0) data: u32,
+    @location(1) normal: vec3<i32>,
 };
 
 struct VertexOutput {
@@ -51,14 +53,37 @@ fn calculate_uvs(v_index: u32, texture_id: u32) -> vec2<f32> {
       }
 }
 
+fn unpack_vertex_data(data: u32) -> vec3<f32> {
+    let x = (data >> 27u) & 0x1Fu;
+    let y = (data >> 18u) & 0x1FFu;
+    let z = (data >> 13u) & 0x1Fu;
+    return vec3<f32>(f32(x), f32(y), f32(z));
+}
+
+// fn unpack_vertex_data(data: u32) -> vec3<f32> {
+//     let index = (data >> 16u) & 0xFFFFu;
+//     let z = index / (16u * 256u);
+//     let y = (index - z * 16u * 256u) / 16u;
+//     let x = index - z * 16u * 256u - y * 16u;
+//     return vec3<f32>(f32(x), f32(y), f32(z));
+// }
+
+
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
-    let face_normal = input.vertices[input.v_index];
-    output.vertices = globals.proj * globals.view * vec4<f32>(input.vertices, 1.0);
-    output.tex_coords = calculate_uvs(input.v_index, input.texture_id);
+
+    let local_pos = unpack_vertex_data(input.data);
+    let world_pos = vec3<f32>(
+        f32(chunk_pos.x) * 16.0 + local_pos.x,
+        local_pos.y,
+        f32(chunk_pos.y) * 16.0 + local_pos.z
+    );
+    let texture_id = (input.data & 0x1FFFu); // 13 bits
+    output.vertices = globals.proj * globals.view * vec4<f32>(world_pos, 1.0);
+    output.tex_coords = calculate_uvs(input.v_index, texture_id);
     output.normal = input.normal;
-    output.local_pos = input.vertices;
+    output.local_pos = local_pos;
     return output;
 }
 

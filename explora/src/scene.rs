@@ -1,10 +1,10 @@
-use common::{event::Events, resources::DeltaTime, SysResult};
+use common::{chunk::Chunk, event::Events, resources::DeltaTime, SysResult};
 
 use apecs::*;
 
 use crate::{
     input::Input,
-    render::{resources::TerrainRender, GpuGlobals, Renderer},
+    render::{resources::TerrainRender, ChunkPos, Renderer, Uniforms},
 };
 use vek::Vec3;
 
@@ -19,7 +19,7 @@ pub struct SceneSystem {
     camera: Query<&'static mut Camera>,
     events: Read<Events<WindowEvent>>,
     delta: Read<DeltaTime>,
-    globals: Write<GpuGlobals>,
+    globals: Write<Uniforms>,
     terrain_render_data: Write<TerrainRender>,
     window: Write<Window, NoDefault>,
     renderer: Write<Renderer, NoDefault>,
@@ -61,16 +61,16 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
 
     for camera in cameras.iter_mut() {
         camera.update(scene.delta.0, dir);
-        let matrices = camera.build_matrices();
+        let matrices = camera.compute_matrices();
         let sun_pos = Vec3::new(15.0, 300.0, 15.0);
-        let new_globals = GpuGlobals::new(
+        let new_globals = Uniforms::new(
             matrices.view,
             matrices.proj,
             sun_pos,
             scene.globals.enable_lighting,
         );
         *scene.globals = new_globals;
-        scene.renderer.write_globals(*scene.globals);
+        scene.renderer.write_uniforms(*scene.globals);
     }
     ok()
 }

@@ -9,7 +9,7 @@ use apecs::{NoDefault, Read};
 use crate::render::resources::{EguiContext, EguiSettings};
 use vek::Vec2;
 
-use crate::render::{GpuGlobals, Renderer};
+use crate::render::{Renderer, Uniforms};
 
 use crate::{camera::Camera, window::Window};
 
@@ -48,7 +48,7 @@ pub struct EguiRenderSystem {
     camera: Query<&'static mut Camera>,
     renderer: Write<Renderer, NoDefault>,
     window: Read<Window, NoDefault>,
-    globals: Write<GpuGlobals>,
+    globals: Write<Uniforms>,
     ping: Read<Ping>,
     mode: Read<GameMode, NoDefault>,
 }
@@ -66,7 +66,7 @@ pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
         let orientation = player_camera.orientation();
         let mut camera_speed = player_camera.speed;
         let mut camera_sensitivity = player_camera.sensitivity;
-        let mut camera_fov = player_camera.fov;
+        let mut camera_fov = player_camera.fov();
         let mut lighting = system.globals.enable_lighting != 0;
         egui::Window::new("Debug")
             .default_width(360.0)
@@ -111,7 +111,7 @@ pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
 
         player_camera.speed = camera_speed;
         player_camera.sensitivity = camera_sensitivity;
-        player_camera.fov = camera_fov;
+        player_camera.set_fov(camera_fov);
 
         system.globals.enable_lighting = lighting as u32;
     }

@@ -183,7 +183,6 @@ pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<S
         let start_z = player_chunk_pos.y - render_dist;
         let end_x = player_chunk_pos.x + render_dist;
         let end_z = player_chunk_pos.y + render_dist;
-
         for x in start_x..=end_x {
             for z in start_z..=end_z {
                 let chunk_pos = Vec2::new(x, z);

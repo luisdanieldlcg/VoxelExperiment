@@ -1,9 +1,6 @@
-use common::{resources::TerrainMap, SysResult};
+use common::{chunk::Chunk, resources::TerrainMap, SysResult};
 
-use crate::render::{
-    resources::{TerrainRender, TerrainRenderData},
-    Renderer,
-};
+use crate::render::{resources::TerrainRender, ChunkPos, Renderer};
 
 use apecs::*;
 use vek::Vec2;
@@ -20,6 +17,7 @@ pub struct TerrainSystem {
 
 pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
     let blocks = system.block_map.inner();
+
     let terrain = system.terrain_map.inner();
 
     for (pos, chunk) in terrain.chunks.iter() {
@@ -36,12 +34,11 @@ pub fn terrain_system_render(mut system: TerrainSystem) -> SysResult {
 
         if system.terrain_render_data.chunks.get(pos).is_none() {
             // create the mesh of the chunk
-            let mesh = mesh::create_chunk_mesh(chunk, *pos, &system.terrain_map, blocks);
-            let buffer = system.renderer.create_vertex_buffer(&mesh);
-            system
-                .terrain_render_data
-                .chunks
-                .insert(*pos, TerrainRenderData { buffer });
+            let vertices = mesh::create_chunk_mesh(chunk, *pos, &system.terrain_map, blocks);
+            let buffer = system.renderer.create_vertex_buffer(&vertices);
+            let chunk_pos = ChunkPos::new(pos.x, pos.y);
+            let terrain_mesh = system.renderer.create_terrain_chunk_mesh(chunk_pos, buffer);
+            system.terrain_render_data.chunks.insert(*pos, terrain_mesh);
         }
     }
 

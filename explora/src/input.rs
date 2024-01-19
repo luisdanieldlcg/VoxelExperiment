@@ -33,10 +33,9 @@ impl Default for Input {
     }
 }
 
-type Key = winit::keyboard::KeyCode;
+pub type Key = winit::keyboard::KeyCode;
 
 impl Input {
-    
     pub fn press(&mut self, input: Key) {
         if !self.pressed[input as usize] {
             self.just_pressed[input as usize] = true;

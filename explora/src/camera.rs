@@ -12,12 +12,13 @@ pub struct Camera {
     pos: Vec3<f32>,
     target: Vec3<f32>,
     aspect: f32,
-    pub fov: f32,
+    fov: f32,
     /// The rotation of the camera in radians.
     /// The x component is the yaw, the y component is the pitch.
     rot: Vec2<f32>,
     pub speed: f32,
     pub sensitivity: f32,
+    proj: Mat4<f32>,
 }
 
 impl Camera {
@@ -30,14 +31,15 @@ impl Camera {
             rot: Vec2::new(-46.0, 0.0),
             speed: 20.0,
             sensitivity: 0.1,
+            proj: Mat4::identity(),
         }
     }
 
-    pub fn build_matrices(&mut self) -> Matrices {
-        let view: Mat4<f32> = Mat4::look_at_lh(self.pos, self.pos + self.target, Vec3::unit_y());
-        let proj: Mat4<f32> =
-            Mat4::perspective_lh_no(self.fov.to_radians(), self.aspect, Z_NEAR, Z_FAR);
-        Matrices { view, proj }
+    pub fn compute_matrices(&self) -> Matrices {
+        Matrices {
+            view: Mat4::look_at_lh(self.pos, self.pos + self.target, Vec3::unit_y()),
+            proj: self.proj,
+        }
     }
 
     pub fn rotate(&mut self, dx: f32, dy: f32) {
@@ -70,15 +72,24 @@ impl Camera {
     pub fn update(&mut self, dt: f32, dir: Vec3<f32>) {
         let forward = self.forward();
         let right = self.right();
-        let speed = self.speed;
-        let dx = right * -dir.x * speed * dt;
-        let dy = Vec3::unit_y() * dir.y * speed * dt;
-        let dz = forward * dir.z * speed * dt;
+        let dx = right * -dir.x * self.speed * dt;
+        let dy = Vec3::unit_y() * dir.y * self.speed * dt;
+        let dz = forward * dir.z * self.speed * dt;
         self.pos += dx + dy + dz;
     }
 
     pub fn set_aspect_ratio(&mut self, aspect: f32) {
         self.aspect = aspect;
+        self.rebuild_projection();
+    }
+
+    pub fn set_fov(&mut self, fov: f32) {
+        self.fov = fov;
+        self.rebuild_projection();
+    }
+
+    pub fn fov(&self) -> f32 {
+        self.fov
     }
 
     pub fn orientation(&self) -> &str {
@@ -98,5 +109,9 @@ impl Camera {
 
     pub fn pos(&self) -> Vec3<f32> {
         self.pos
+    }
+
+    fn rebuild_projection(&mut self) {
+        self.proj = Mat4::perspective_lh_no(self.fov.to_radians(), self.aspect, Z_NEAR, Z_FAR)
     }
 }

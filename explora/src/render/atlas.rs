@@ -19,7 +19,7 @@ impl Rect {
 
 #[derive(Debug)]
 pub struct AtlasRect {
-    pub id: u32,
+    pub id: u16,
     pub name: String,
     pub rect: Rect,
 }
@@ -97,7 +97,7 @@ impl BlockAtlas {
             );
 
             tiles.push(AtlasRect {
-                id,
+                id: id as u16,
                 name: file_name.to_string_lossy().into_owned(),
                 rect,
             });

@@ -17,9 +17,9 @@ pub struct Block {
 
 #[derive(Debug, Clone)]
 pub struct VoxelTextures {
-    pub top: u32,
-    pub side: u32,
-    pub bottom: u32,
+    pub top: u16,
+    pub side: u16,
+    pub bottom: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

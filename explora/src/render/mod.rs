@@ -1,5 +1,4 @@
 pub mod atlas;
-pub mod bindings;
 pub mod buffer;
 pub mod error;
 pub mod pipeline;
@@ -12,13 +11,14 @@ use atlas::BlockAtlas;
 use buffer::Buffer;
 use resources::{EguiContext, TerrainRender};
 use texture::Texture;
-use vek::{Mat4, Vec3};
+use vek::{Mat4, Vec2, Vec3};
 
 pub const SYSTEM_STAGE_PRE_RENDER: &str = "pre_render";
 pub const SYSTEM_STAGE_RENDER: &str = "render";
 pub const SYSTEM_STAGE_UI_DRAW_WIDGETS: &str = "ui_draw_widgets";
 pub const SYSTEM_STAGE_UI_RENDER: &str = "ui_render";
 pub const SYSTEM_STAGE_POST_RENDER: &str = "post_render";
+
 pub trait Vertex: bytemuck::Pod {
     const STRIDE: wgpu::BufferAddress = std::mem::size_of::<Self>() as wgpu::BufferAddress;
 
@@ -28,14 +28,27 @@ pub trait Vertex: bytemuck::Pod {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Zeroable, bytemuck::Pod)]
-pub struct GpuGlobals {
+pub struct ChunkPos {
+    pub x: i32,
+    pub z: i32,
+}
+
+impl ChunkPos {
+    pub fn new(x: i32, z: i32) -> Self {
+        Self { x, z }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Zeroable, bytemuck::Pod)]
+pub struct Uniforms {
     pub view: [[f32; 4]; 4],
     pub proj: [[f32; 4]; 4],
     pub sun_pos: [f32; 3],
     pub enable_lighting: u32,
 }
 
-impl GpuGlobals {
+impl Uniforms {
     pub fn new(view: Mat4<f32>, proj: Mat4<f32>, sun_pos: Vec3<f32>, lighting: u32) -> Self {
         Self {
             view: view.into_col_arrays(),
@@ -45,7 +58,7 @@ impl GpuGlobals {
         }
     }
 }
-impl Default for GpuGlobals {
+impl Default for Uniforms {
     fn default() -> Self {
         Self::new(Mat4::identity(), Mat4::identity(), Vec3::zero(), 1)
     }
@@ -62,7 +75,7 @@ pub struct Renderer {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pipelines: Pipelines,
-    globals_buffer: Buffer<GpuGlobals>,
+    uniforms_buffer: Buffer<Uniforms>,
     terrain_index_buffer: Buffer<u32>,
     core_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
@@ -70,6 +83,7 @@ pub struct Renderer {
     egui_renderer: egui_wgpu::Renderer,
     // For debugging
     pub graphics_backend: String,
+    chunk_pos_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer {
@@ -147,10 +161,10 @@ impl Renderer {
         let shader = device
             .create_shader_module(wgpu::include_wgsl!("../../../assets/shaders/terrain.wgsl"));
 
-        let globals_buffer = Buffer::new(
+        let uniforms_buffer = Buffer::new(
             &device,
             wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            &[GpuGlobals::default()],
+            &[Uniforms::default()],
         );
 
         let block_atlas = match BlockAtlas::create(&device, &queue, "assets/textures/block", 16, 16)
@@ -162,34 +176,108 @@ impl Renderer {
             },
         };
 
-        let core_bind_group_layout =
+        let chunk_pos_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Core Bind Group Layout"),
-                entries: &bindings::core_bind_group_layouts(),
+                label: Some("Chunk Pos Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
             });
 
-        let core_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Core Bind Group"),
-            layout: &core_bind_group_layout,
-            entries: &bindings::core_bind_groups(&globals_buffer, &block_atlas),
+        let common_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Common Bind Group Layout"),
+                entries: &[
+                    // Globals
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Atlas Texture
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    // Atlas Texture Sampler
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let common_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Common Bind Group"),
+            layout: &common_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniforms_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&block_atlas.texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&block_atlas.texture.sampler),
+                },
+            ],
         });
+
+        let chunk_pos_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Chunk Pos Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
 
         let pipelines = Pipelines {
             terrain: pipeline::TerrainPipeline::new(
                 &device,
-                &[&core_bind_group_layout],
+                &[&common_bind_group_layout, &chunk_pos_bind_group_layout],
                 &shader,
                 &config,
                 false,
             ),
             terrain_wireframe: pipeline::TerrainPipeline::new(
                 &device,
-                &[&core_bind_group_layout],
+                &[&common_bind_group_layout, &chunk_pos_bind_group_layout],
                 &shader,
                 &config,
                 true,
             ),
         };
+
         let depth_texture = Texture::depth(&device, config.width, config.height);
         let terrain_index_buffer = compute_terrain_indices(&device, 5000);
         let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1);
@@ -201,13 +289,14 @@ impl Renderer {
             queue,
             config,
             terrain_index_buffer,
-            globals_buffer,
-            core_bind_group,
+            uniforms_buffer,
+            core_bind_group: common_bind_group,
             pipelines,
             depth_texture,
             block_atlas,
             egui_renderer,
             graphics_backend,
+            chunk_pos_bind_group_layout,
         };
 
         Ok(Self::setup_ecs_plugin(this))
@@ -216,7 +305,7 @@ impl Renderer {
     fn setup_ecs_plugin(self) -> apecs::Plugin {
         apecs::Plugin::default()
             .with_resource(|_: ()| Ok(self))
-            .with_resource(|_: ()| Ok(GpuGlobals::default()))
+            .with_resource(|_: ()| Ok(Uniforms::default()))
             .with_resource(|_: ()| Ok(TerrainRender::default()))
             .with_resource(|_: ()| Ok(EguiContext::default()))
             .with_system(
@@ -258,13 +347,26 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
     }
 
-    pub fn write_globals(&mut self, globals: GpuGlobals) {
-        self.globals_buffer.write(&self.queue, &[globals]);
+    pub fn write_uniforms(&mut self, uniforms: Uniforms) {
+        self.uniforms_buffer.write(&self.queue, &[uniforms]);
     }
 
     pub fn create_vertex_buffer<T: Vertex>(&mut self, data: &[T]) -> Buffer<T> {
         self.check_index_buffer::<T>(data.len());
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
+    }
+
+    pub fn create_terrain_chunk_mesh(
+        &mut self,
+        chunk_pos: ChunkPos,
+        buf: Buffer<TerrainVertex>,
+    ) -> TerrainChunkMesh {
+        TerrainChunkMesh::new(
+            &self.device,
+            &self.chunk_pos_bind_group_layout,
+            chunk_pos,
+            buf,
+        )
     }
 
     pub fn block_atlas(&self) -> &atlas::BlockAtlas {
@@ -325,6 +427,8 @@ impl Renderer {
 }
 
 use apecs::*;
+
+use self::{resources::TerrainChunkMesh, vertex::TerrainVertex};
 
 struct RenderTexture {
     surface_tex: wgpu::SurfaceTexture,
@@ -436,15 +540,15 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
             render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
         }
         render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
-
         render_pass.set_index_buffer(
             renderer.terrain_index_buffer.slice(),
             wgpu::IndexFormat::Uint32,
         );
 
         for terrain_data in system.terrain.chunks.values() {
-            render_pass.set_vertex_buffer(0, terrain_data.buffer.slice());
-            render_pass.draw_indexed(0..terrain_data.buffer.len() / 4 * 6, 0, 0..1);
+            render_pass.set_bind_group(1, &terrain_data.chunk_pos_bind_group, &[]);
+            render_pass.set_vertex_buffer(0, terrain_data.vertex_buffer.slice());
+            render_pass.draw_indexed(0..terrain_data.vertex_buffer.len() / 4 * 6, 0, 0..1);
         }
     }
 
