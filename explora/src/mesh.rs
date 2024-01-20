@@ -1,13 +1,17 @@
 use common::{chunk::Chunk, dir::Direction, resources::TerrainMap};
 use vek::{Vec2, Vec3};
 
-use crate::{block::BlockMap, render::vertex::TerrainVertex};
+use crate::{
+    block::BlockMap,
+    render::{atlas::BlockAtlas, vertex::TerrainVertex},
+};
 
 pub fn create_chunk_mesh(
     chunk: &Chunk,
     chunk_pos: Vec2<i32>,
     terrain_map: &TerrainMap,
     block_map: &BlockMap,
+    block_atlas: &BlockAtlas,
 ) -> Vec<TerrainVertex> {
     let mut vertices = Vec::with_capacity(Chunk::SIZE.product());
     for pos in chunk.iter() {
@@ -75,19 +79,15 @@ pub fn create_chunk_mesh(
             continue;
         }
 
-        // let block = block_map
-        //     .0
-        //     .get(&id)
-        //     .unwrap_or_else(|| panic!("The block with id: {} is not registered", id as u32));
-        let block = block_map.get(id).unwrap();
-        
-        // let top = block.textures.top;
-        // let bottom = block.textures.bottom;
-        // let side = block.textures.side;
-        // TEMPORAL
-        let top = 0;
-        let bottom = 0;
-        let side = 0;
+        let Some(block) = block_map.get(id) else {
+            log::error!("Block with id: {:?} not found", id);
+            continue;
+        };
+
+        let (top, side, bottom) = block.textures();
+        let top = block_atlas.get_texture_id(top);
+        let side = block_atlas.get_texture_id(side);
+        let bottom = block_atlas.get_texture_id(bottom);
 
         // North
         if render_quad(Direction::North) {

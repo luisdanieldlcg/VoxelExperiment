@@ -44,7 +44,7 @@ impl State {
 
     pub fn with_event<E: Event>(&mut self, name: &str) -> &mut Self {
         match self.world.set_resource::<Events<E>>(Events::default()) {
-            Ok(world) => {
+            Ok(_) => {
                 self.world
                     .with_system(
                         format!("{}-update", name),

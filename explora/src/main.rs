@@ -1,7 +1,8 @@
 use common::{clock::Clock, resources::GameMode};
+use explora::client;
 use explora::render::Renderer;
 use explora::{
-    block::{self, BlockMap},
+    block::BlockMap,
     client::Client,
     input::{self, Input},
     scene,
@@ -9,8 +10,8 @@ use explora::{
     ui::EguiInput,
     window::{Window, WindowEvent},
 };
-fn main() -> anyhow::Result<()> {
-    common::init_logger("wgpu=warn");
+fn main() -> apecs::anyhow::Result<()> {
+    common::init_logger("wgpu=warn,naga=error,apecs=warn");
 
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),
@@ -26,17 +27,17 @@ fn main() -> anyhow::Result<()> {
             panic!();
         },
     };
-    setup_ecs(&mut client, window)?;
+    initialize_ecs(&mut client, window)?;
     // TODO: change this. this should NOT be here
     *client.state_mut().resource_mut::<GameMode>() = GameMode::Singleplayer;
     explora::run::run(event_loop, client);
     Ok(())
 }
 
-fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
-    let block_map = BlockMap::load_blocks("assets/blocks", "assets/textures/block");
-    let render_plugin = Renderer::initialize(window.platform(), &block_map.texture_list()).unwrap();
-    
+fn initialize_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<()> {
+    let block_map = BlockMap::load_blocks("assets/blocks", "assets/textures/blocks");
+    let render_plugin = Renderer::initialize(window.platform(), block_map.textures()).unwrap();
+
     client
         .state_mut()
         .ecs_mut()
@@ -47,9 +48,9 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
         .with_resource(window)?
         .with_plugin(render_plugin)?
         .with_system_with_dependencies(
-            "terrain_tick",
-            explora::terrain::terrain_system_render,
-            &["chunk_load"],
+            explora::terrain::TERRAIN_CHUNK_MESH_SYSTEM,
+            explora::terrain::terrain_chunk_mesh,
+            &[client::CHUNK_LOAD_SYSTEM],
             &[],
         )?
         .with_system_with_dependencies(
@@ -58,12 +59,6 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
             &[],
             &[],
         )?
-        // .with_system_with_dependencies(
-        //     "setup",
-        //     setup,
-        //     &[],
-        //     &[explora::render::SYSTEM_STAGE_PRE_RENDER],
-        // )?
         .with_system_barrier()
         .with_system("scene_update", scene::scene_update_system)?
         .with_system_barrier()
@@ -71,22 +66,5 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
 
     client.state_mut().with_event::<WindowEvent>("window_event");
     common::state::print_system_schedule(client.state_mut().ecs_mut());
-
     Ok(())
 }
-
-use apecs::*;
-
-// #[derive(CanFetch)]
-// struct SetupSystem {
-//     window: Write<Window, NoDefault>,
-//     block_map: Write<BlockMap>,
-//     renderer: Read<Renderer, NoDefault>,
-// }
-
-// fn setup(mut sys: SetupSystem) -> SysResult {
-//     sys.window.grab_cursor(true);
-//     *sys.block_map = BlockManager::load_blocks("assets/blocks");
-//     // *sys.block_map = block::load_blocks("assets/blocks", &sys.renderer.block_atlas().tiles);
-//     end()
-// }

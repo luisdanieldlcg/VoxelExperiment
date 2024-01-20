@@ -46,21 +46,34 @@ pub struct Uniforms {
     pub proj: [[f32; 4]; 4],
     pub sun_pos: [f32; 3],
     pub enable_lighting: u32,
+    pub atlas_size: u32,
+    pub tile_size: u32,
+    _padding: [f32; 2], // UNUSED for now
 }
 
 impl Uniforms {
-    pub fn new(view: Mat4<f32>, proj: Mat4<f32>, sun_pos: Vec3<f32>, lighting: u32) -> Self {
+    pub fn new(
+        view: Mat4<f32>,
+        proj: Mat4<f32>,
+        sun_pos: Vec3<f32>,
+        lighting: u32,
+        atlas_size: u32,
+        tile_size: u32,
+    ) -> Self {
         Self {
             view: view.into_col_arrays(),
             proj: proj.into_col_arrays(),
             sun_pos: sun_pos.into_array(),
             enable_lighting: lighting,
+            atlas_size,
+            tile_size,
+            _padding: [0.0; 2],
         }
     }
 }
 impl Default for Uniforms {
     fn default() -> Self {
-        Self::new(Mat4::identity(), Mat4::identity(), Vec3::zero(), 1)
+        Self::new(Mat4::identity(), Mat4::identity(), Vec3::zero(), 1, 0, 0)
     }
 }
 
@@ -79,7 +92,6 @@ pub struct Renderer {
     terrain_index_buffer: Buffer<u32>,
     core_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
-    block_atlas: BlockAtlas,
     egui_renderer: egui_wgpu::Renderer,
     // For debugging
     pub graphics_backend: String,
@@ -87,7 +99,10 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn initialize(window: &winit::window::Window, textures: &[String]) -> Result<apecs::Plugin, error::RenderError> {
+    pub fn initialize(
+        window: &winit::window::Window,
+        textures: &[String],
+    ) -> Result<apecs::Plugin, error::RenderError> {
         let backends = std::env::var("WGPU_BACKEND")
             .ok()
             .and_then(|env| match env.to_lowercase().as_str() {
@@ -167,8 +182,7 @@ impl Renderer {
             &[Uniforms::default()],
         );
 
-        let block_atlas = match BlockAtlas::create(textures)
-        {
+        let block_atlas = match BlockAtlas::create(textures) {
             Ok(atlas) => atlas,
             Err(err) => {
                 panic!("Failed to create block atlas: {}", err);
@@ -280,21 +294,21 @@ impl Renderer {
             core_bind_group: common_bind_group,
             pipelines,
             depth_texture,
-            block_atlas,
             egui_renderer,
             graphics_backend,
             chunk_pos_bind_group_layout,
         };
 
-        Ok(Self::setup_ecs_plugin(this))
+        Ok(Self::initialize_ecs_plugin(this, block_atlas))
     }
 
-    fn setup_ecs_plugin(self) -> apecs::Plugin {
+    fn initialize_ecs_plugin(self, atlas: BlockAtlas) -> apecs::Plugin {
         apecs::Plugin::default()
             .with_resource(|_: ()| Ok(self))
             .with_resource(|_: ()| Ok(Uniforms::default()))
             .with_resource(|_: ()| Ok(TerrainRender::default()))
             .with_resource(|_: ()| Ok(EguiContext::default()))
+            .with_resource(|_: ()| Ok(atlas))
             .with_system(
                 SYSTEM_STAGE_PRE_RENDER,
                 pre_render_system,
@@ -354,10 +368,6 @@ impl Renderer {
             chunk_pos,
             buf,
         )
-    }
-
-    pub fn block_atlas(&self) -> &atlas::BlockAtlas {
-        &self.block_atlas
     }
 
     pub fn update_ui_texture(

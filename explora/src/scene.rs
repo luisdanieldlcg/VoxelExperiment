@@ -4,7 +4,7 @@ use apecs::*;
 
 use crate::{
     input::Input,
-    render::{resources::TerrainRender, ChunkPos, Renderer, Uniforms},
+    render::{atlas::BlockAtlas, resources::TerrainRender, ChunkPos, Renderer, Uniforms},
 };
 use vek::Vec3;
 
@@ -24,6 +24,7 @@ pub struct SceneSystem {
     window: Write<Window, NoDefault>,
     renderer: Write<Renderer, NoDefault>,
     input: Read<Input>,
+    block_atlas: Read<BlockAtlas, NoDefault>,
 }
 
 pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
@@ -68,6 +69,8 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
             matrices.proj,
             sun_pos,
             scene.globals.enable_lighting,
+            scene.block_atlas.atlas_size,
+            scene.block_atlas.tile_size,
         );
         *scene.globals = new_globals;
         scene.renderer.write_uniforms(*scene.globals);

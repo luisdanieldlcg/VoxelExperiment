@@ -7,8 +7,6 @@ pub struct Texture {
 
 impl Texture {
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: RgbaImage) -> Self {
-   
-
         let size = wgpu::Extent3d {
             width: image.width(),
             height: image.height(),

@@ -36,7 +36,7 @@ impl Client {
         let mut state = State::client().expect("Failed to create client state");
         state
             .ecs_mut()
-            .with_system("chunk_load", chunk_load_system)
+            .with_system(CHUNK_LOAD_SYSTEM, chunk_load_system)
             .unwrap();
         let instant = std::time::Instant::now();
 
@@ -144,6 +144,9 @@ impl Client {
 }
 
 use apecs::*;
+
+pub const CHUNK_LOAD_SYSTEM: &str = "chunk_load";
+
 #[derive(CanFetch)]
 pub struct ChunkLoadSystem {
     terrain: Write<TerrainMap>,

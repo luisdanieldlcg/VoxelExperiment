@@ -3,6 +3,8 @@ struct Globals {
     proj: mat4x4<f32>,
     sun_pos: vec3<f32>,
     enable_lighting: u32,
+    atlas_size: u32,
+    tile_size: u32,
 };
 
 @group(0) @binding(0)
@@ -24,30 +26,28 @@ struct VertexOutput {
     @location(2) local_pos: vec3<f32>,
 };
 
-// TODO: make these configurable
-const ATLAS_SIZE: u32 = 512u;
-const TEXTURE_WIDTH: u32 = 16u;
-const TEXTURE_HEIGHT: u32 = 16u;
+fn calculate_texture_coordinates(v_index: u32, data: u32) -> vec2<f32> {
+    // Calculate the texture coordinates based on the texture id
+    let texture_id = data & 0x1FFFu; // mask 13 bits
+    let texture_width = globals.tile_size;
+    let texture_height = globals.tile_size;
+    // number of columns in the atlas
+    let cols = globals.atlas_size / texture_width; 
+    let pixel_x = f32((texture_id % cols) * texture_width);
+    let pixel_y = f32((texture_id / cols) * texture_height);
 
-fn calculate_uvs(v_index: u32, data: u32) -> vec2<f32> {
-    // Recalculate the texture coordinates based on the texture id
-    // mask 13 bits
-    let texture_id = data & 0x1FFFu;
-    let pixel_x = f32((texture_id % (ATLAS_SIZE / TEXTURE_WIDTH)) * TEXTURE_WIDTH);
-    let pixel_y = f32((texture_id / (ATLAS_SIZE / TEXTURE_HEIGHT)) * TEXTURE_HEIGHT);
-    
     switch (v_index % 4u) {
           case 0u: {
-              return vec2<f32>(pixel_x / f32(ATLAS_SIZE), (pixel_y + f32(TEXTURE_HEIGHT)) / f32(ATLAS_SIZE));
+              return vec2<f32>(pixel_x / f32(globals.atlas_size), (pixel_y + f32(texture_height)) / f32(globals.atlas_size));
           }
           case 1u: {
-              return vec2<f32>((pixel_x + f32(TEXTURE_WIDTH)) / f32(ATLAS_SIZE), (pixel_y + f32(TEXTURE_HEIGHT)) / f32(ATLAS_SIZE));
+              return vec2<f32>((pixel_x + f32(texture_width)) / f32(globals.atlas_size), (pixel_y + f32(texture_height)) / f32(globals.atlas_size));
           }
           case 2u: {
-              return vec2<f32>((pixel_x + f32(TEXTURE_WIDTH)) / f32(ATLAS_SIZE), pixel_y / f32(ATLAS_SIZE));
+              return vec2<f32>((pixel_x + f32(texture_width)) / f32(globals.atlas_size), pixel_y / f32(globals.atlas_size));
           }
           case 3u: {
-              return vec2<f32>(pixel_x / f32(ATLAS_SIZE), pixel_y  / f32(ATLAS_SIZE));
+              return vec2<f32>(pixel_x / f32(globals.atlas_size), pixel_y  / f32(globals.atlas_size));
           }
           default: {
               return vec2<f32>(0.0, 0.0);
@@ -62,15 +62,6 @@ fn unpack_vertex_data(data: u32) -> vec3<f32> {
     return vec3<f32>(f32(x), f32(y), f32(z));
 }
 
-// fn unpack_vertex_data(data: u32) -> vec3<f32> {
-//     let index = (data >> 16u) & 0xFFFFu;
-//     let z = index / (16u * 256u);
-//     let y = (index - z * 16u * 256u) / 16u;
-//     let x = index - z * 16u * 256u - y * 16u;
-//     return vec3<f32>(f32(x), f32(y), f32(z));
-// }
-
-
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
@@ -82,7 +73,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
         f32(chunk_pos.y) * 16.0 + local_pos.z
     );
     output.vertices = globals.proj * globals.view * vec4<f32>(world_pos, 1.0);
-    output.tex_coords = calculate_uvs(input.v_index, input.data);
+    output.tex_coords = calculate_texture_coordinates(input.v_index, input.data);
     output.normal = input.normal;
     output.local_pos = local_pos;
     return output;
