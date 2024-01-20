@@ -1,4 +1,4 @@
-use common::{chunk::Chunk, resources::TerrainMap, SysResult};
+use common::{resources::TerrainMap, SysResult};
 
 use crate::render::{resources::TerrainRender, ChunkPos, Renderer};
 
@@ -11,7 +11,7 @@ use crate::{block::BlockMap, mesh};
 pub struct TerrainSystem {
     renderer: Write<Renderer, NoDefault>,
     terrain_map: Write<TerrainMap>,
-    block_map: Read<BlockMap>,
+    block_map: Read<BlockMap, NoDefault>,
     terrain_render_data: Write<TerrainRender, NoDefault>,
 }
 

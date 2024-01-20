@@ -11,7 +11,7 @@ use atlas::BlockAtlas;
 use buffer::Buffer;
 use resources::{EguiContext, TerrainRender};
 use texture::Texture;
-use vek::{Mat4, Vec2, Vec3};
+use vek::{Mat4, Vec3};
 
 pub const SYSTEM_STAGE_PRE_RENDER: &str = "pre_render";
 pub const SYSTEM_STAGE_RENDER: &str = "render";
@@ -87,7 +87,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn initialize(window: &winit::window::Window) -> Result<apecs::Plugin, error::RenderError> {
+    pub fn initialize(window: &winit::window::Window, textures: &[String]) -> Result<apecs::Plugin, error::RenderError> {
         let backends = std::env::var("WGPU_BACKEND")
             .ok()
             .and_then(|env| match env.to_lowercase().as_str() {
@@ -167,7 +167,7 @@ impl Renderer {
             &[Uniforms::default()],
         );
 
-        let block_atlas = match BlockAtlas::create(&device, &queue, "assets/textures/block", 16, 16)
+        let block_atlas = match BlockAtlas::create(textures)
         {
             Ok(atlas) => atlas,
             Err(err) => {
@@ -175,21 +175,6 @@ impl Renderer {
                 // TODO: return custom error? (e.g RendererError::BlockAtlasCreationFailed)
             },
         };
-
-        let chunk_pos_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Chunk Pos Bind Group Layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
 
         let common_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -227,6 +212,8 @@ impl Renderer {
                 ],
             });
 
+        let atlas_image = block_atlas.create_texture_handle(&device, &queue);
+
         let common_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Common Bind Group"),
             layout: &common_bind_group_layout,
@@ -237,11 +224,11 @@ impl Renderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&block_atlas.texture.view),
+                    resource: wgpu::BindingResource::TextureView(&atlas_image.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&block_atlas.texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&atlas_image.sampler),
                 },
             ],
         });

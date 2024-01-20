@@ -1,6 +1,5 @@
-use common::{clock::Clock, resources::GameMode, SysResult};
+use common::{clock::Clock, resources::GameMode};
 use explora::render::Renderer;
-
 use explora::{
     block::{self, BlockMap},
     client::Client,
@@ -16,7 +15,6 @@ fn main() -> anyhow::Result<()> {
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),
     });
-
     let singleplayer = Singleplayer::init();
     let addr = singleplayer.wait_for_init();
     let aspect = window.inner_size().x as f32 / window.inner_size().y as f32;
@@ -36,14 +34,16 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
-    let render_plugin = Renderer::initialize(window.platform()).unwrap();
+    let block_map = BlockMap::load_blocks("assets/blocks", "assets/textures/block");
+    let render_plugin = Renderer::initialize(window.platform(), &block_map.texture_list()).unwrap();
+    
     client
         .state_mut()
         .ecs_mut()
+        .with_resource(block_map)?
         .with_default_resource::<Clock>()?
         .with_default_resource::<Input>()?
         .with_default_resource::<EguiInput>()?
-        .with_default_resource::<BlockMap>()?
         .with_resource(window)?
         .with_plugin(render_plugin)?
         .with_system_with_dependencies(
@@ -58,12 +58,12 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
             &[],
             &[],
         )?
-        .with_system_with_dependencies(
-            "setup",
-            setup,
-            &[],
-            &[explora::render::SYSTEM_STAGE_PRE_RENDER],
-        )?
+        // .with_system_with_dependencies(
+        //     "setup",
+        //     setup,
+        //     &[],
+        //     &[explora::render::SYSTEM_STAGE_PRE_RENDER],
+        // )?
         .with_system_barrier()
         .with_system("scene_update", scene::scene_update_system)?
         .with_system_barrier()
@@ -77,15 +77,16 @@ fn setup_ecs(client: &mut Client, window: Window) -> anyhow::Result<()> {
 
 use apecs::*;
 
-#[derive(CanFetch)]
-struct SetupSystem {
-    window: Write<Window, NoDefault>,
-    block_map: Write<BlockMap>,
-    renderer: Read<Renderer, NoDefault>,
-}
+// #[derive(CanFetch)]
+// struct SetupSystem {
+//     window: Write<Window, NoDefault>,
+//     block_map: Write<BlockMap>,
+//     renderer: Read<Renderer, NoDefault>,
+// }
 
-fn setup(mut sys: SetupSystem) -> SysResult {
-    sys.window.grab_cursor(true);
-    *sys.block_map = block::load_blocks("assets/blocks", &sys.renderer.block_atlas().tiles);
-    end()
-}
+// fn setup(mut sys: SetupSystem) -> SysResult {
+//     sys.window.grab_cursor(true);
+//     *sys.block_map = BlockManager::load_blocks("assets/blocks");
+//     // *sys.block_map = block::load_blocks("assets/blocks", &sys.renderer.block_atlas().tiles);
+//     end()
+// }

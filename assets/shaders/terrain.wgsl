@@ -29,8 +29,10 @@ const ATLAS_SIZE: u32 = 512u;
 const TEXTURE_WIDTH: u32 = 16u;
 const TEXTURE_HEIGHT: u32 = 16u;
 
-fn calculate_uvs(v_index: u32, texture_id: u32) -> vec2<f32> {
+fn calculate_uvs(v_index: u32, data: u32) -> vec2<f32> {
     // Recalculate the texture coordinates based on the texture id
+    // mask 13 bits
+    let texture_id = data & 0x1FFFu;
     let pixel_x = f32((texture_id % (ATLAS_SIZE / TEXTURE_WIDTH)) * TEXTURE_WIDTH);
     let pixel_y = f32((texture_id / (ATLAS_SIZE / TEXTURE_HEIGHT)) * TEXTURE_HEIGHT);
     
@@ -79,9 +81,8 @@ fn vs_main(input: VertexInput) -> VertexOutput {
         local_pos.y,
         f32(chunk_pos.y) * 16.0 + local_pos.z
     );
-    let texture_id = (input.data & 0x1FFFu); // 13 bits
     output.vertices = globals.proj * globals.view * vec4<f32>(world_pos, 1.0);
-    output.tex_coords = calculate_uvs(input.v_index, texture_id);
+    output.tex_coords = calculate_uvs(input.v_index, input.data);
     output.normal = input.normal;
     output.local_pos = local_pos;
     return output;

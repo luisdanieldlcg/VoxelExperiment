@@ -54,5 +54,6 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
     ui.renderer
         .egui_renderer
         .render(&mut egui_render_pass, &paint_jobs, &screen_descriptor);
+
     ok()
 }

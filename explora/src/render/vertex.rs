@@ -12,7 +12,10 @@ pub struct TerrainVertex {
 impl TerrainVertex {
     pub fn new(position: vek::Vec3<u32>, texture_id: u16, normal: Vec3<i32>) -> Self {
         Self {
-            data: (position.x << 27) | (position.y << 18) | (position.z << 13) | (texture_id as u32),
+            data: (position.x << 27)
+                | (position.y << 18)
+                | (position.z << 13)
+                | (texture_id as u32),
             normal: [normal.x, normal.y, normal.z],
         }
     }
