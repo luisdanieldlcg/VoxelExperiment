@@ -11,6 +11,7 @@ use crate::{
     client::Client,
     input::Input,
     render::{resources::EguiContext, Renderer},
+    settings::GameplaySettings,
     ui::{EguiInput, EguiState},
     window::{Window, WindowEvent},
 };
@@ -89,11 +90,15 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                 },
 
                 winit::event::Event::DeviceEvent {
-                    event: winit::event::DeviceEvent::MouseMotion { delta },
+                    event: winit::event::DeviceEvent::MouseMotion { delta: (dx, dy) },
                     ..
                 } => {
+                    let settings = client.state().resource::<GameplaySettings>();
+                    let delta = Vec2::new(
+                        dx as f32 * (settings.mouse_sensitivity as f32 / 100.0),
+                        dy as f32 * (settings.mouse_sensitivity as f32 / 100.0),
+                    );
                     let events = client.state_mut().resource_mut::<Events<WindowEvent>>();
-                    let delta = Vec2::new(delta.0 as f32, delta.1 as f32);
                     events.send(WindowEvent::CursorMove(delta));
                 },
                 _ => (),

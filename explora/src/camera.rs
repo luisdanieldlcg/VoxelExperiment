@@ -3,79 +3,91 @@ use vek::{Mat4, Vec2, Vec3};
 const Z_NEAR: f32 = 0.1;
 const Z_FAR: f32 = 1000.0;
 
+pub struct Plane {
+    pub normal: Vec3<f32>,
+    pub distance: f32,
+}
+
+impl Plane {
+    pub fn new(point: Vec3<f32>, normal: Vec3<f32>) -> Self {
+        Self {
+            normal: normal.normalized(),
+            distance: point.dot(normal),
+        }
+    }
+}
+
 pub struct Matrices {
     pub view: Mat4<f32>,
     pub proj: Mat4<f32>,
 }
 
+/// Represents a camera in 3D space.
 pub struct Camera {
+    /// The position of the camera in world space.
     pos: Vec3<f32>,
-    target: Vec3<f32>,
+    /// The aspect ratio of the camera.
     aspect: f32,
+    /// The field of view of the camera in degrees.
     fov: f32,
     /// The rotation of the camera in radians.
     /// The x component is the yaw, the y component is the pitch.
+    ///
+    /// The pitch is how much we are looking up or down.
+    /// The yaw is how much we are looking left or right.
     rot: Vec2<f32>,
-    pub speed: f32,
-    pub sensitivity: f32,
     proj: Mat4<f32>,
 }
 
-impl Camera {
-    pub fn new(aspect: f32) -> Self {
+impl Default for Camera {
+    fn default() -> Self {
         Self {
             pos: Vec3::new(0.0, 257.0, 0.0),
-            target: Vec3::new(0.0, 0.0, 0.0),
-            aspect,
+            aspect: 1.0,
             fov: 70.0,
             rot: Vec2::new(-46.0, 0.0),
-            speed: 20.0,
-            sensitivity: 0.1,
             proj: Mat4::identity(),
         }
     }
-
-    pub fn compute_matrices(&self) -> Matrices {
+}
+impl Camera {
+    pub fn compute_matrices(&mut self) -> Matrices {
+        let view = Mat4::look_at_lh(self.pos, self.pos + self.forward(), Vec3::unit_y());
         Matrices {
-            view: Mat4::look_at_lh(self.pos, self.pos + self.target, Vec3::unit_y()),
+            view,
             proj: self.proj,
         }
     }
 
-    pub fn rotate(&mut self, dx: f32, dy: f32) {
-        let sensitivity = self.sensitivity;
-        let offset_x = dx * sensitivity;
-        let offset_y = dy * sensitivity;
+    pub fn move_by(&mut self, dx: f32, dy: f32, dz: f32) {
+        self.pos += dz * self.forward_xz() + -dx * self.right() + Vec3::unit_y() * dy;
+    }
 
-        self.rot.x += offset_x.to_radians();
-        self.rot.y += -offset_y.to_radians();
-
-        self.rot.y = self.rot.y.clamp(
+    pub fn rotate_by(&mut self, dx: f32, dy: f32) {
+        // 2π is a full rotation, so we need to clamp the yaw to 0..2π
+        self.rot.x = (self.rot.x + dx).rem_euclid(std::f32::consts::TAU);
+        // We clamp the pitch to -π/2..π/2
+        self.rot.y = (self.rot.y - dy).clamp(
             -std::f32::consts::FRAC_PI_2 + 0.0001,
             std::f32::consts::FRAC_PI_2 - 0.0001,
         );
-
-        let (yaw_sin, yaw_cos) = self.rot.x.sin_cos();
-        let (pitch_sin, pitch_cos) = self.rot.y.sin_cos();
-
-        // yaw_sin z goes negative for left handed coordinate system
-        self.target = Vec3::new(yaw_cos * pitch_cos, pitch_sin, -yaw_sin * pitch_cos).normalized();
     }
 
     pub fn forward(&self) -> Vec3<f32> {
-        Vec3::new(f32::cos(self.rot.x), 0.0, -f32::sin(self.rot.x)).normalized()
-    }
-    pub fn right(&self) -> Vec3<f32> {
-        Vec3::new(f32::sin(self.rot.x), 0.0, f32::cos(self.rot.x)).normalized()
+        Vec3::new(
+            f32::cos(self.rot.x) * f32::cos(self.rot.y),
+            f32::sin(self.rot.y),
+            -f32::sin(self.rot.x) * f32::cos(self.rot.y),
+        )
+        .normalized()
     }
 
-    pub fn update(&mut self, dt: f32, dir: Vec3<f32>) {
-        let forward = self.forward();
-        let right = self.right();
-        let dx = right * -dir.x * self.speed * dt;
-        let dy = Vec3::unit_y() * dir.y * self.speed * dt;
-        let dz = forward * dir.z * self.speed * dt;
-        self.pos += dx + dy + dz;
+    pub fn forward_xz(&self) -> Vec3<f32> {
+        Vec3::new(f32::cos(self.rot.x), 0.0, -f32::sin(self.rot.x)).normalized()
+    }
+
+    pub fn right(&self) -> Vec3<f32> {
+        self.forward().cross(Vec3::unit_y()).normalized()
     }
 
     pub fn set_aspect_ratio(&mut self, aspect: f32) {
@@ -93,14 +105,15 @@ impl Camera {
     }
 
     pub fn orientation(&self) -> &str {
-        let (x, y, z) = self.target.map(|f| f.abs()).into_tuple();
+        let forward: Vec3<f32> = self.forward();
+        let (x, y, z) = forward.map(|f| f.abs()).into_tuple();
         if x >= y && x >= z {
-            return if self.target.x > 0.0 { "West" } else { "East" };
+            return if forward.x > 0.0 { "West" } else { "East" };
         }
         if y >= z {
-            return if self.target.y > 0.0 { "Up" } else { "Down" };
+            return if forward.y > 0.0 { "Up" } else { "Down" };
         }
-        if self.target.z > 0.0 {
+        if forward.z > 0.0 {
             "North"
         } else {
             "South"

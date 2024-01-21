@@ -13,7 +13,9 @@ pub fn create_chunk_mesh(
     block_map: &BlockMap,
     block_atlas: &BlockAtlas,
 ) -> Vec<TerrainVertex> {
-    let mut vertices = Vec::with_capacity(Chunk::SIZE.product());
+    
+    let mut vertices = Vec::with_capacity(3000);
+
     for pos in chunk.iter() {
         let origin = pos.map(|x| x as u32);
         let render_quad = |direction: Direction| {

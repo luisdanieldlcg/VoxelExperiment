@@ -491,7 +491,7 @@ fn pre_render_system(mut system: PreRenderSystem) -> apecs::anyhow::Result<Shoul
 #[derive(CanFetch)]
 struct RenderSystem {
     renderer: Read<Renderer, NoDefault>,
-    terrain: Read<TerrainRender>,
+    terrain: Write<TerrainRender>,
     texture: Write<Option<RenderTexture>>,
     encoder: Write<Option<CommandEncoder>>,
 }
@@ -548,7 +548,6 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
             render_pass.draw_indexed(0..terrain_data.vertex_buffer.len() / 4 * 6, 0, 0..1);
         }
     }
-
     ok()
 }
 
