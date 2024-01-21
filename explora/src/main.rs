@@ -1,6 +1,7 @@
 use common::{clock::Clock, resources::GameMode};
-use explora::client;
 use explora::render::Renderer;
+use explora::settings::GameplaySettings;
+use explora::terrain;
 use explora::{
     block::BlockMap,
     client::Client,
@@ -18,8 +19,7 @@ fn main() -> apecs::anyhow::Result<()> {
     });
     let singleplayer = Singleplayer::init();
     let addr = singleplayer.wait_for_init();
-    let aspect = window.inner_size().x as f32 / window.inner_size().y as f32;
-    let mut client = match Client::new(addr, aspect) {
+    let mut client = match Client::new(addr) {
         Ok(t) => t,
         Err(err) => {
             log::error!("{:?}", err);
@@ -45,12 +45,17 @@ fn initialize_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<
         .with_default_resource::<Clock>()?
         .with_default_resource::<Input>()?
         .with_default_resource::<EguiInput>()?
+        .with_default_resource::<GameplaySettings>()?
         .with_resource(window)?
         .with_plugin(render_plugin)?
+        .with_system(
+            explora::terrain::CHUNK_LOAD_SYSTEM,
+            explora::terrain::chunk_load_system,
+        )?
         .with_system_with_dependencies(
             explora::terrain::TERRAIN_CHUNK_MESH_SYSTEM,
             explora::terrain::terrain_chunk_mesh,
-            &[client::CHUNK_LOAD_SYSTEM],
+            &[terrain::CHUNK_LOAD_SYSTEM],
             &[],
         )?
         .with_system_with_dependencies(

@@ -1,4 +1,4 @@
-use crate::{error::Error, input};
+use crate::error::Error;
 
 use vek::Vec2;
 use winit::event_loop::EventLoop;

@@ -42,8 +42,8 @@ impl Chunk {
             let y = (id / Self::SIZE.x) % Self::SIZE.y;
             let z = (id / (Self::SIZE.x * Self::SIZE.y)) % Self::SIZE.z;
 
-            let noise_x = (world_x + x as f64) / 600.0;
-            let noise_z = (world_z + z as f64) / 600.0;
+            let noise_x = (world_x + x as f64) / 330.0;
+            let noise_z = (world_z + z as f64) / 400.0;
             let height = compute_height(generator, noise_x, noise_z);
 
             let offset = 700.0;
@@ -57,7 +57,10 @@ impl Chunk {
             if y == height {
                 *block = BlockId::Grass
             } else if y < height && y > stone_height {
-                *block = BlockId::Dirt
+                *block = BlockId::Dirt;
+                if y >= 255 {
+                    *block = BlockId::Grass;
+                }
             } else if y < stone_height {
                 *block = BlockId::Stone
             } else {

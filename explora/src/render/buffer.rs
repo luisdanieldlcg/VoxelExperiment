@@ -8,7 +8,7 @@ pub struct Buffer<T: Copy + bytemuck::Pod> {
     /// The underlying buffer handle.
     pub(crate) buf: wgpu::Buffer,
     /// The length of the buffer.
-    len: usize,
+    len: u32,
     /// A phantom data field to make the compiler happy.
     ///
     /// It is needed because the generic type `T` is not used in the struct.
@@ -26,11 +26,10 @@ impl<T: Copy + bytemuck::Pod> Buffer<T> {
             contents: bytemuck::cast_slice(data),
             usage,
         };
-
         Self {
             buf: device.create_buffer_init(&descriptor),
             phantom: std::marker::PhantomData,
-            len: data.len(),
+            len: data.len() as u32,
         }
     }
 
@@ -57,6 +56,6 @@ impl<T: Copy + bytemuck::Pod> Buffer<T> {
     /// Gives you the length of the buffer.
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> u32 {
-        self.len as u32
+        self.len
     }
 }

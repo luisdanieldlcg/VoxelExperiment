@@ -7,6 +7,7 @@ pub mod mesh;
 pub mod render;
 pub mod run;
 pub mod scene;
+pub mod settings;
 pub mod singleplayer;
 pub mod terrain;
 pub mod ui;

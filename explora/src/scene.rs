@@ -1,10 +1,11 @@
-use common::{chunk::Chunk, event::Events, resources::DeltaTime, SysResult};
+use common::{event::Events, resources::DeltaTime, SysResult};
 
 use apecs::*;
 
 use crate::{
     input::Input,
-    render::{atlas::BlockAtlas, resources::TerrainRender, ChunkPos, Renderer, Uniforms},
+    render::{atlas::BlockAtlas, resources::TerrainRender, Renderer, Uniforms},
+    settings::GameplaySettings,
 };
 use vek::Vec3;
 
@@ -16,7 +17,7 @@ use crate::{
 
 #[derive(CanFetch)]
 pub struct SceneSystem {
-    camera: Query<&'static mut Camera>,
+    camera: Write<Camera>,
     events: Read<Events<WindowEvent>>,
     delta: Read<DeltaTime>,
     globals: Write<Uniforms>,
@@ -25,6 +26,7 @@ pub struct SceneSystem {
     renderer: Write<Renderer, NoDefault>,
     input: Read<Input>,
     block_atlas: Read<BlockAtlas, NoDefault>,
+    gameplay_settings: Read<GameplaySettings>,
 }
 
 pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
@@ -41,39 +43,35 @@ pub fn scene_update_system(mut scene: SceneSystem) -> SysResult {
     for event in &scene.events.events {
         match event {
             WindowEvent::Resize(size) => {
-                for camera in scene.camera.query().iter_mut() {
-                    camera.set_aspect_ratio(size.x as f32 / size.y as f32);
-                }
+                scene.camera.set_aspect_ratio(size.x as f32 / size.y as f32);
             },
             WindowEvent::CursorMove(cursor) => {
                 if scene.window.cursor_locked() {
                     // HACK: This is a hack to prevent the camera from moving around
                     // when the cursor is locked.
-                    for camera in scene.camera.query().iter_mut() {
-                        camera.rotate(cursor.x, cursor.y);
-                    }
+                    scene.camera.rotate_by(cursor.x * 0.005, cursor.y * 0.005);
                 }
             },
             _ => {},
         }
     }
+    let dx = dir.x * scene.gameplay_settings.free_camera_speed * scene.delta.0;
+    let dy = dir.y * scene.gameplay_settings.free_camera_speed * scene.delta.0;
+    let dz = dir.z * scene.gameplay_settings.free_camera_speed * scene.delta.0;
 
-    let mut cameras = scene.camera.query();
+    scene.camera.move_by(dx, dy, dz);
+    let matrices = scene.camera.compute_matrices();
+    let sun_pos = Vec3::new(15.0, 300.0, 15.0);
 
-    for camera in cameras.iter_mut() {
-        camera.update(scene.delta.0, dir);
-        let matrices = camera.compute_matrices();
-        let sun_pos = Vec3::new(15.0, 300.0, 15.0);
-        let new_globals = Uniforms::new(
-            matrices.view,
-            matrices.proj,
-            sun_pos,
-            scene.globals.enable_lighting,
-            scene.block_atlas.atlas_size,
-            scene.block_atlas.tile_size,
-        );
-        *scene.globals = new_globals;
-        scene.renderer.write_uniforms(*scene.globals);
-    }
+    let new_globals = Uniforms::new(
+        matrices.view,
+        matrices.proj,
+        sun_pos,
+        scene.globals.enable_lighting,
+        scene.block_atlas.atlas_size,
+        scene.block_atlas.tile_size,
+    );
+    *scene.globals = new_globals;
+    scene.renderer.write_uniforms(*scene.globals);
     ok()
 }

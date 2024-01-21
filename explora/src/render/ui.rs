@@ -24,7 +24,6 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
     let paint_jobs = egui_context
         .get_mut()
         .tessellate(output.shapes, output.pixels_per_point);
-
     for (id, delta) in output.textures_delta.set {
         ui.renderer.update_ui_texture(id, &delta);
     }

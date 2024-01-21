@@ -2,7 +2,10 @@ pub mod config;
 pub mod events;
 pub mod world;
 
-use std::{net::SocketAddr, time::{Duration, Instant}};
+use std::{
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 
 use apecs::CanFetch;
 use common::{
