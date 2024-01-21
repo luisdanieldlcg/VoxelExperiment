@@ -58,3 +58,14 @@ impl EntityMap {
         Uid(uid)
     }
 }
+
+pub struct TerrainConfig {
+    pub visible_chunk_radius: u32,
+}
+impl Default for TerrainConfig {
+    fn default() -> Self {
+        Self {
+            visible_chunk_radius: 8,
+        }
+    }
+}

@@ -63,7 +63,7 @@ impl<S: Serialize, R: DeserializeOwned> Connection<S, R> {
 
     /// Receive a packet. This will not block, if there is no packet it will return an error.
     pub fn recv(&self) -> Result<(R, SocketAddr), NetworkError> {
-        let mut buf = [0; 9000];
+        let mut buf = [0; 10000];
         match self.socket.recv_from(&mut buf) {
             Ok((len, addr)) => Self::deserialize(&buf[..len]).map(|p| (p, addr)),
             Err(e) => Err(NetworkError::IOError(e.kind())),

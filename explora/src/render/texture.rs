@@ -1,30 +1,12 @@
+use image::RgbaImage;
+
 pub struct Texture {
     pub(crate) view: wgpu::TextureView,
     pub(crate) sampler: wgpu::Sampler,
 }
 
 impl Texture {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: image::DynamicImage) -> Self {
-        // Handle errors for unsupported image formats
-        match image {
-            image::DynamicImage::ImageLumaA8(_) => {
-                panic!("Image format not supported: ImageLumaA8")
-            },
-            image::DynamicImage::ImageLuma16(_) => {
-                panic!("Image format not supported: ImageLuma16")
-            },
-            image::DynamicImage::ImageLumaA16(_) => {
-                panic!("Image format not supported: ImageLumaA16")
-            },
-            image::DynamicImage::ImageRgb16(_) => panic!("Image format not supported: ImageRgb16"),
-            image::DynamicImage::ImageRgba16(_) => {
-                panic!("Image format not supported: ImageRgba16")
-            },
-            _ => (),
-        };
-
-        let data = &image.to_rgba8();
-
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: RgbaImage) -> Self {
         let size = wgpu::Extent3d {
             width: image.width(),
             height: image.height(),
@@ -49,7 +31,7 @@ impl Texture {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            data,
+            &image,
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * image.width()),

@@ -9,32 +9,14 @@ pub enum BlockId {
 }
 
 impl BlockId {
-    pub fn is_solid(self) -> bool {
-        match self {
-            BlockId::Air => false,
-            BlockId::Dirt => true,
-            BlockId::Grass => true,
-            BlockId::Stone => true,
-        }
-    }
-
-    pub fn is_air(self) -> bool {
+    pub const fn is_air(self) -> bool {
         matches!(self, BlockId::Air)
-    }
-
-    pub fn id_str(self) -> &'static str {
-        match self {
-            BlockId::Air => "air",
-            BlockId::Dirt => "dirt",
-            BlockId::Grass => "grass",
-            BlockId::Stone => "stone",
-        }
     }
 }
 
 impl From<&str> for BlockId {
     fn from(s: &str) -> Self {
-        match s {
+        match s.to_lowercase().as_str() {
             "air" => BlockId::Air,
             "dirt" => BlockId::Dirt,
             "grass" => BlockId::Grass,

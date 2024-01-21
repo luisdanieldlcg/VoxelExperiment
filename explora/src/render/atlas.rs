@@ -1,128 +1,82 @@
-use std::path::Path;
+use std::collections::HashMap;
 
 use image::{GenericImage, RgbaImage};
-use log::{debug, error, warn};
 
-#[derive(Debug, Clone, Copy)]
-pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub w: usize,
-    pub h: usize,
-}
-
-impl Rect {
-    pub fn new(x: f32, y: f32, w: usize, h: usize) -> Self {
-        Self { x, y, w, h }
-    }
-}
-
-#[derive(Debug)]
-pub struct AtlasRect {
-    pub id: u16,
-    pub name: String,
-    pub rect: Rect,
-}
+use super::texture::Texture;
 
 pub struct BlockAtlas {
-    pub texture: crate::render::Texture,
-    pub tiles: Vec<AtlasRect>,
-    pub size: vek::Extent2<u32>,
+    pub buffer: RgbaImage,
+    pub tiles: HashMap<String, u16>,
+    pub tile_size: u32,
+    pub atlas_size: u32,
 }
 
 impl BlockAtlas {
-    pub fn create<P: AsRef<Path>>(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        textures_path: P,
-        tile_width: u32,
-        tile_height: u32,
-    ) -> std::io::Result<Self> {
-        let texture_width = 512;
-        let texture_height = 512;
-
-        log::debug!(
-            "Creating block atlas with dimensions {}x{}",
-            texture_width,
-            texture_height
-        );
-
-        let mut atlas_buffer = RgbaImage::new(texture_width, texture_height);
-        let mut tiles = vec![];
-        let mut id = 0;
-
-        for entry in std::fs::read_dir(textures_path.as_ref())? {
-            let entry = entry?;
-            let path = entry.path();
-            if !path.is_file() || path.extension().unwrap_or_default() != "png" {
-                warn!("Skipping non-png file: {}", path.display());
-                continue;
-            }
-
-            let file_name = match path.file_stem() {
-                Some(s) => s,
-                None => {
-                    warn!("Skipping file with no name: {}", path.display());
-                    continue;
-                },
-            };
-
-            let image = match image::open(&path) {
+    pub fn create(textures: &[String]) -> std::io::Result<Self> {
+        let mut texture_data = Vec::new();
+        let (mut last_width, mut last_height) = (0, 0);
+        for path in textures {
+            let image = match image::open(path) {
                 Ok(image) => image,
-                Err(err) => {
-                    warn!("Failed to load texture {}: {}", path.display(), err);
-                    continue;
-                },
+                Err(e) => panic!("Failed to load texture: {}. Path: {}", e, path),
             };
 
-            if image.width() != tile_width || image.height() != tile_height {
-                warn!(
-                    "Skipping non-{}x{} texture: {}",
-                    tile_width,
-                    tile_height,
-                    path.display()
-                );
-                continue;
+            if last_width != 0
+                && last_height != 0
+                && (image.width() != last_width || image.height() != last_height)
+            {
+                panic!("All textures must be the same size");
             }
 
-            // coordinates of the tile in the texture, e.g (0, 0), (16, 0), (32, 0), ...
-            let x = (id % (texture_width / tile_width)) * tile_width;
-            let y = (id / (texture_width / tile_width)) * tile_height;
-            // pixel coordinates are in the range [0, 1]
-            let rect = Rect::new(
-                x as f32 / texture_width as f32,
-                y as f32 / texture_height as f32,
-                tile_width as usize,
-                tile_height as usize,
-            );
+            last_width = image.width();
+            last_height = image.height();
 
-            tiles.push(AtlasRect {
-                id: id as u16,
-                name: file_name.to_string_lossy().into_owned(),
-                rect,
-            });
-
-            if let Err(e) = atlas_buffer.copy_from(&image, x, y) {
-                error!("Failed to write texture: {}", e);
-                continue;
-            }
-
-            id += 1;
+            texture_data.push(image);
         }
-        // buffer.save("atlas.png").unwrap();
 
-        debug!("{} textures loaded.", id);
+        let cols = (textures.len() as f32).sqrt().ceil() as u32;
+        let rows = cols;
 
-        let atlas_texture = crate::render::Texture::new(
-            device,
-            queue,
-            image::DynamicImage::ImageRgba8(atlas_buffer),
-        );
+        let mut atlas = RgbaImage::new(cols * last_width, rows * last_height);
+        let mut tiles = HashMap::new();
 
+        // Write the atlas
+        for (i, image) in texture_data.iter().enumerate() {
+            let x = (i as u32 % cols) * last_width;
+            let y = (i as u32 / rows) * last_height;
+
+            let filename = textures[i]
+                .split('/')
+                .last()
+                .unwrap()
+                .split('.')
+                .next()
+                .unwrap();
+
+            tiles.insert(filename.to_owned(), i as u16);
+
+            atlas
+                .copy_from(image, x, y)
+                .expect("Failed to copy texture to atlas");
+        }
+
+        atlas.save("atlas.png").expect("Failed to save atlas");
         Ok(Self {
-            texture: atlas_texture,
+            tile_size: last_width,
+            atlas_size: cols * last_width,
+            buffer: atlas,
             tiles,
-            size: vek::Extent2::new(texture_width, texture_height),
         })
+    }
+
+    pub fn create_texture_handle(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Texture {
+        Texture::new(device, queue, self.buffer.clone())
+    }
+
+    pub fn get_texture_id(&self, texture: &str) -> u16 {
+        match self.tiles.get(texture) {
+            Some(id) => *id,
+            None => panic!("Texture with name: {:?} not found. Make sure your texture is in assets/textures and is a png file", texture),
+        }
     }
 }

@@ -20,6 +20,7 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
 
     let egui_context = ui.egui_context.inner_mut();
     let output = egui_context.get_mut().end_frame();
+
     let paint_jobs = egui_context
         .get_mut()
         .tessellate(output.shapes, output.pixels_per_point);
@@ -54,5 +55,6 @@ pub fn ui_render_system(mut ui: UiRenderSystem) -> Result<ShouldContinue> {
     ui.renderer
         .egui_renderer
         .render(&mut egui_render_pass, &paint_jobs, &screen_descriptor);
+
     ok()
 }
