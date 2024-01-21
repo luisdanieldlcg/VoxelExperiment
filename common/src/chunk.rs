@@ -1,15 +1,16 @@
 use noise::{NoiseFn, Perlin};
-use serde::{Deserialize, Serialize};
 use vek::{Vec2, Vec3};
 
 use crate::block::BlockId;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Chunk {
-    blocks: Vec<BlockId>,
+    blocks: [BlockId; 16 * 256 * 16],
 }
 
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use rayon::{
+    iter::{IndexedParallelIterator, IntoParallelRefMutIterator},
+    prelude::ParallelIterator,
+};
 
 pub fn compute_height(generator: &noise::BasicMulti<Perlin>, world_x: f64, world_z: f64) -> i32 {
     let height = generator.get([world_x, world_z]);
@@ -26,7 +27,7 @@ impl Chunk {
 
     pub fn flat(id: BlockId) -> Self {
         Self {
-            blocks: vec![id; Self::SIZE.product()],
+            blocks: [id; Self::SIZE.x * Self::SIZE.y * Self::SIZE.z],
         }
     }
 
@@ -34,36 +35,35 @@ impl Chunk {
         let world_x = (offset.x * Self::SIZE.x as i32) as f64;
         let world_z = (offset.y * Self::SIZE.z as i32) as f64;
 
-        let blocks = (0..Self::SIZE.product())
-            .into_par_iter()
-            .map(|i| {
-                let x = i % Self::SIZE.x;
-                let y = (i / Self::SIZE.x) % Self::SIZE.y;
-                let z = (i / (Self::SIZE.x * Self::SIZE.y)) % Self::SIZE.z;
+        let mut blocks = [BlockId::Air; 16 * 256 * 16];
 
-                let noise_x = (world_x + x as f64) / 140.0;
-                let noise_z = (world_z + z as f64) / 140.0;
-                let height = compute_height(generator, noise_x, noise_z);
+        blocks.par_iter_mut().enumerate().for_each(|(id, block)| {
+            let x = id % Self::SIZE.x;
+            let y = (id / Self::SIZE.x) % Self::SIZE.y;
+            let z = (id / (Self::SIZE.x * Self::SIZE.y)) % Self::SIZE.z;
 
-                let offset = 700.0;
-                let noise_x = (world_x + x as f64) / offset;
-                let noise_z = (world_z + z as f64) / offset;
-                let stone_height = compute_height(generator, noise_x, noise_z);
-                let stone_height = ((stone_height as f32) * 0.7) as i32;
+            let noise_x = (world_x + x as f64) / 600.0;
+            let noise_z = (world_z + z as f64) / 600.0;
+            let height = compute_height(generator, noise_x, noise_z);
 
-                let y = y as i32;
+            let offset = 700.0;
+            let noise_x = (world_x + x as f64) / offset;
+            let noise_z = (world_z + z as f64) / offset;
+            let stone_height = compute_height(generator, noise_x, noise_z);
+            let stone_height = ((stone_height as f32) * 0.7) as i32;
 
-                if y == height {
-                    BlockId::Grass
-                } else if y < height && y > stone_height {
-                    BlockId::Dirt
-                } else if y < stone_height {
-                    BlockId::Stone
-                } else {
-                    BlockId::Air
-                }
-            })
-            .collect::<Vec<_>>();
+            let y = y as i32;
+
+            if y == height {
+                *block = BlockId::Grass
+            } else if y < height && y > stone_height {
+                *block = BlockId::Dirt
+            } else if y < stone_height {
+                *block = BlockId::Stone
+            } else {
+                *block = BlockId::Air
+            }
+        });
 
         Self { blocks }
     }
@@ -103,8 +103,9 @@ impl Chunk {
         }
     }
 }
+
 pub fn compress(c: &Chunk) -> Vec<(BlockId, u32)> {
-    let mut compressed = Vec::with_capacity(3000);
+    let mut compressed = Vec::with_capacity(600);
     let mut current_block = c.blocks[0];
     let mut count = 1;
     for &block in c.blocks.iter().skip(1) {
@@ -119,19 +120,18 @@ pub fn compress(c: &Chunk) -> Vec<(BlockId, u32)> {
     }
     // Don't forget to add the last run
     compressed.push((current_block, count));
-
     compressed
 }
 
 pub fn decompress(compressed: &[(BlockId, u32)]) -> Chunk {
-    let mut blocks = Vec::with_capacity(Chunk::SIZE.product());
-
+    let mut blocks = [BlockId::Air; 16 * 256 * 16];
+    let mut index = 0;
     for (block, count) in compressed {
         for _ in 0..*count {
-            blocks.push(*block);
+            blocks[index] = *block;
+            index += 1;
         }
     }
-
     Chunk { blocks }
 }
 

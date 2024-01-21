@@ -16,7 +16,6 @@ var<uniform> chunk_pos: vec2<i32>;
 struct VertexInput {
     @builtin(vertex_index) v_index: u32,
     @location(0) data: u32,
-    @location(1) normal: vec3<i32>,
 };
 
 struct VertexOutput {
@@ -28,7 +27,9 @@ struct VertexOutput {
 
 fn calculate_texture_coordinates(v_index: u32, data: u32) -> vec2<f32> {
     // Calculate the texture coordinates based on the texture id
-    let texture_id = data & 0x1FFFu; // mask 13 bits
+    // let texture_id = data & 0x1FFFu; // mask 13 bits
+    // mask 10 bits
+    let texture_id = data & 0x3FFu;
     let texture_width = globals.tile_size;
     let texture_height = globals.tile_size;
     // number of columns in the atlas
@@ -62,6 +63,18 @@ fn unpack_vertex_data(data: u32) -> vec3<f32> {
     return vec3<f32>(f32(x), f32(y), f32(z));
 }
 
+fn unpack_normals(data: u32) -> vec3<i32> {
+    let x = (data >> 12u) & 0x1u;
+    let y = (data >> 11u) & 0x1u;
+    let z = (data >> 10u) & 0x1u;
+    // map range [0, 1] to [-1, 1]
+    return vec3<i32>(
+        i32(x) * 2 - 1,
+        i32(y) * 2 - 1,
+        i32(z) * 2 - 1
+    );
+}
+
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
@@ -74,7 +87,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     );
     output.vertices = globals.proj * globals.view * vec4<f32>(world_pos, 1.0);
     output.tex_coords = calculate_texture_coordinates(input.v_index, input.data);
-    output.normal = input.normal;
+    output.normal = unpack_normals(input.data);
     output.local_pos = local_pos;
     return output;
 }

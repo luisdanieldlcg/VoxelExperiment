@@ -27,10 +27,11 @@ impl Window {
             .with_inner_size(winit::dpi::PhysicalSize::new(1920, 1080))
             .build(&event_loop)?;
 
-        let this = Self {
+        let mut this = Self {
             platform,
             cursor_grabbed: true,
         };
+        this.grab_cursor(true);
         Ok((this, event_loop))
     }
 

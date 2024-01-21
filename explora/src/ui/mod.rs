@@ -1,6 +1,6 @@
 use common::{
     clock::Clock,
-    resources::{GameMode, Ping},
+    resources::{GameMode, Ping, TerrainConfig, TerrainMap},
     SysResult,
 };
 
@@ -51,7 +51,10 @@ pub struct EguiRenderSystem {
     globals: Write<Uniforms>,
     ping: Read<Ping>,
     mode: Read<GameMode, NoDefault>,
+    terrain_config: Write<TerrainConfig>,
+    terrain: Read<TerrainMap>,
 }
+
 // This system must run before the render system
 pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
     let input = system.egui_input.get();
@@ -107,6 +110,14 @@ pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
                 ui.label("Lighting");
                 // add box
                 ui.checkbox(&mut lighting, "Voxel Lighting".to_string());
+                ui.separator();
+                ui.label("Terrain");
+                ui.add(
+                    egui::Slider::new(&mut system.terrain_config.visible_chunk_radius, 1..=32)
+                        .text("Visible Chunk Radius"),
+                );
+                // loaded chunks
+                ui.label(format!("Loaded Chunks: {}", system.terrain.chunks.len()));
             });
 
         player_camera.speed = camera_speed;

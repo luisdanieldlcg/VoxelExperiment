@@ -11,7 +11,7 @@ use common::{
         error::NetworkError,
         packet::{ClientPacket, PingPacket, ServerPacket},
     },
-    resources::{Ping, ProgramTime, TerrainMap},
+    resources::{Ping, ProgramTime, TerrainConfig, TerrainMap},
     state::State,
 };
 use log::info;
@@ -26,6 +26,8 @@ pub struct Client {
     state: State,
     /// The last time we received a ping packet from the server
     last_ping_time: f64,
+    packet_count: usize,
+    last_chunk_request_time: f64,
 }
 
 impl Client {
@@ -76,6 +78,8 @@ impl Client {
             connection,
             state,
             last_ping_time: 0.0,
+            packet_count: 0,
+            last_chunk_request_time: 0.0,
         })
     }
 
@@ -84,7 +88,7 @@ impl Client {
 
         let time = self.state.resource::<ProgramTime>();
 
-        if time.0 - self.last_ping_time > 2.0 {
+        if time.0 - self.last_ping_time > 1.0 {
             self.send_packet(ClientPacket::Ping(PingPacket::Ping));
             self.last_ping_time = self.state.program_time();
         }
@@ -101,13 +105,14 @@ impl Client {
                 },
                 ServerPacket::ChunkUpdate { pos, data } => {
                     let chunk = common::chunk::decompress(&data);
+
                     let old = self
                         .state
                         .resource_mut::<TerrainMap>()
                         .chunks
                         .insert(pos, chunk);
                     if let Some(old) = old {
-                        log::warn!("Overwriting chunk at {:?} with new chunk", pos);
+                        // log::warn!("Overwriting chunk at {:?} with new chunk", pos);
                     }
                     self.state
                         .resource_mut::<TerrainMap>()
@@ -117,13 +122,19 @@ impl Client {
                 _ => (),
             }
         }
+        // this may run multiple times until the chunk arrives
+        // so we'll throttle the chunk requests.
+
+        if self.state.program_time() - self.last_chunk_request_time < 0.1 {
+            return;
+        }
 
         let terrain = self.state.resource::<TerrainMap>();
-        // this may run multiple times per tick until the chunk arrives
-        // so we need to check if the chunk is already requested
         for pending in &terrain.pending_chunks {
             if !terrain.chunks.contains_key(pending) {
                 self.send_packet(ClientPacket::ChunkRequest(*pending));
+                self.last_chunk_request_time = self.state.program_time();
+                self.packet_count += 1;
             }
         }
     }
@@ -152,48 +163,47 @@ pub struct ChunkLoadSystem {
     terrain: Write<TerrainMap>,
     camera: Query<&'static Camera>,
     terrain_render: Write<TerrainRender>,
+    terrain_config: Read<TerrainConfig>,
 }
 
 pub fn chunk_load_system(mut system: ChunkLoadSystem) -> apecs::anyhow::Result<ShouldContinue> {
     if let Some(camera) = system.camera.query().find_one(0) {
         let camera_pos = camera.pos();
+
+        let chunk_radius = system.terrain_config.visible_chunk_radius as i32;
         let player_chunk_pos = Vec2::new(
-            (camera_pos.x / 16.0).floor() as i32,
-            (camera_pos.z / 16.0).floor() as i32,
+            (camera_pos.x / 16.0).round() as i32,
+            (camera_pos.z / 16.0).round() as i32,
         );
-        let render_dist = 8;
+
+        // Calculate the bounding box of chunks to keep
+        let min_x = player_chunk_pos.x - chunk_radius;
+        let max_x = player_chunk_pos.x + chunk_radius;
+        let min_z = player_chunk_pos.y - chunk_radius;
+        let max_z = player_chunk_pos.y + chunk_radius;
 
         let mut chunks_to_remove = Vec::with_capacity(system.terrain.chunks.len());
         for (pos, _) in system.terrain.chunks.iter() {
-            let dist = Vec2::new(
-                (pos.x - player_chunk_pos.x).abs(),
-                (pos.y - player_chunk_pos.y).abs(),
-            );
-
-            if dist.x > render_dist || dist.y > render_dist {
+            if pos.x < min_x || pos.x > max_x || pos.y < min_z || pos.y > max_z {
                 chunks_to_remove.push(*pos);
             }
         }
 
         for chunk_pos in chunks_to_remove {
+            system.terrain.pending_chunks.remove(&chunk_pos);
             system.terrain.chunks.remove(&chunk_pos);
             system.terrain_render.chunks.remove(&chunk_pos);
-            // log::info!("Unloading chunk at {:?}", chunk_pos);
         }
 
         // load chunks
-        let start_x = player_chunk_pos.x - render_dist;
-        let start_z = player_chunk_pos.y - render_dist;
-        let end_x = player_chunk_pos.x + render_dist;
-        let end_z = player_chunk_pos.y + render_dist;
-        for x in start_x..=end_x {
-            for z in start_z..=end_z {
-                let chunk_pos = Vec2::new(x, z);
-                if !system.terrain.chunks.contains_key(&chunk_pos)
-                    && !system.terrain.pending_chunks.contains(&chunk_pos)
+        for dx in -chunk_radius..=chunk_radius {
+            for dz in -chunk_radius..=chunk_radius {
+                let pos = Vec2::new(player_chunk_pos.x + dx, player_chunk_pos.y + dz);
+                if !system.terrain.chunks.contains_key(&pos)
+                    && !system.terrain.pending_chunks.contains(&pos)
+                    && !system.terrain_render.chunks.contains_key(&pos)
                 {
-                    system.terrain.pending_chunks.insert(chunk_pos);
-                    // log::info!("Loading chunk at {:?}", chunk_pos);
+                    system.terrain.pending_chunks.insert(pos);
                 }
             }
         }

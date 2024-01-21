@@ -1,4 +1,9 @@
-use common::{resources::TerrainMap, SysResult};
+use std::time::Instant;
+
+use common::{
+    resources::{TerrainConfig, TerrainMap},
+    SysResult,
+};
 
 use crate::render::{atlas::BlockAtlas, resources::TerrainRender, ChunkPos, Renderer};
 
@@ -30,7 +35,6 @@ pub fn terrain_chunk_mesh(mut system: TerrainSystem) -> SysResult {
             terrain.chunks.get(&(pos + Vec2::new(0, -1))),
             terrain.chunks.get(&(pos + Vec2::new(-1, 0))),
         ];
-
         if neighbors.iter().any(|n| n.is_none()) {
             continue;
         }
@@ -45,6 +49,5 @@ pub fn terrain_chunk_mesh(mut system: TerrainSystem) -> SysResult {
             system.terrain_render_data.chunks.insert(*pos, terrain_mesh);
         }
     }
-
     ok()
 }
