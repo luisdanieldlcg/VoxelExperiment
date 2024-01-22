@@ -1,11 +1,10 @@
 pub mod atlas;
 pub mod buffer;
 pub mod error;
-pub mod pipeline;
+pub mod pipelines;
 pub mod resources;
 pub mod texture;
 pub mod ui;
-pub mod vertex;
 
 use atlas::BlockAtlas;
 use buffer::Buffer;
@@ -78,8 +77,9 @@ impl Default for Uniforms {
 }
 
 pub struct Pipelines {
-    pub terrain: pipeline::TerrainPipeline,
-    pub terrain_wireframe: pipeline::TerrainPipeline,
+    pub terrain: TerrainPipeline,
+    pub terrain_wireframe: TerrainPipeline,
+    pub debug: DebugPipeline,
 }
 
 pub struct Renderer {
@@ -173,8 +173,11 @@ impl Renderer {
         };
         surface.configure(&device, &config);
 
-        let shader = device
+        let terrain_shader = device
             .create_shader_module(wgpu::include_wgsl!("../../../assets/shaders/terrain.wgsl"));
+
+        let debug_shader =
+            device.create_shader_module(wgpu::include_wgsl!("../../../assets/shaders/debug.wgsl"));
 
         let uniforms_buffer = Buffer::new(
             &device,
@@ -263,19 +266,25 @@ impl Renderer {
             });
 
         let pipelines = Pipelines {
-            terrain: pipeline::TerrainPipeline::new(
+            terrain: TerrainPipeline::new(
                 &device,
                 &[&common_bind_group_layout, &chunk_pos_bind_group_layout],
-                &shader,
+                &terrain_shader,
                 &config,
                 false,
             ),
-            terrain_wireframe: pipeline::TerrainPipeline::new(
+            terrain_wireframe: TerrainPipeline::new(
                 &device,
                 &[&common_bind_group_layout, &chunk_pos_bind_group_layout],
-                &shader,
+                &terrain_shader,
                 &config,
                 true,
+            ),
+            debug: DebugPipeline::new(
+                &device,
+                &config,
+                &debug_shader,
+                &[&common_bind_group_layout],
             ),
         };
 
@@ -357,6 +366,10 @@ impl Renderer {
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
     }
 
+    pub fn create_debug_buffer(&mut self, data: &[DebugVertex]) -> Buffer<DebugVertex> {
+        Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
+    }
+
     pub fn create_terrain_chunk_mesh(
         &mut self,
         chunk_pos: ChunkPos,
@@ -425,7 +438,13 @@ impl Renderer {
 
 use apecs::*;
 
-use self::{resources::TerrainChunkMesh, vertex::TerrainVertex};
+use self::{
+    pipelines::{
+        debug::{DebugPipeline, DebugVertex},
+        terrain::{TerrainPipeline, TerrainVertex},
+    },
+    resources::{DebugRender, TerrainChunkMesh},
+};
 
 struct RenderTexture {
     surface_tex: wgpu::SurfaceTexture,
@@ -494,6 +513,7 @@ struct RenderSystem {
     terrain: Write<TerrainRender>,
     texture: Write<Option<RenderTexture>>,
     encoder: Write<Option<CommandEncoder>>,
+    debug_render: Read<DebugRender>,
 }
 
 /// Sets up the main render pass and draws the terrain
@@ -547,6 +567,11 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
             render_pass.set_vertex_buffer(0, terrain_data.vertex_buffer.slice());
             render_pass.draw_indexed(0..terrain_data.vertex_buffer.len() / 4 * 6, 0, 0..1);
         }
+    }
+
+    if let Some(mesh) = &system.debug_render.mesh {
+        render_pass.set_vertex_buffer(0, mesh.slice());
+        render_pass.draw(0..mesh.len(), 0..1);
     }
     ok()
 }

@@ -1,6 +1,7 @@
 pub mod block;
 pub mod camera;
 pub mod client;
+pub mod debug;
 pub mod error;
 pub mod input;
 pub mod mesh;

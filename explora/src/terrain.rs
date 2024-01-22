@@ -5,13 +5,14 @@ use common::{
 
 use crate::{
     camera::Camera,
+    mesh,
     render::{atlas::BlockAtlas, resources::TerrainRender, ChunkPos, Renderer},
 };
 
 use apecs::*;
 use vek::Vec2;
 
-use crate::{block::BlockMap, mesh};
+use crate::block::BlockMap;
 
 #[derive(CanFetch)]
 pub struct TerrainSystem {
@@ -40,8 +41,13 @@ pub fn terrain_chunk_mesh(mut system: TerrainSystem) -> SysResult {
             continue;
         }
         if system.terrain_render_data.chunks.get(pos).is_none() {
-            let vertices =
-                mesh::create_chunk_mesh(chunk, *pos, &system.terrain_map, blocks, &system.atlas);
+            let vertices = mesh::chunk::create_chunk_mesh(
+                chunk,
+                *pos,
+                &system.terrain_map,
+                blocks,
+                &system.atlas,
+            );
             let buffer = system.renderer.create_vertex_buffer(&vertices);
             let chunk_pos = ChunkPos::new(pos.x, pos.y);
             let terrain_mesh = system.renderer.create_terrain_chunk_mesh(chunk_pos, buffer);

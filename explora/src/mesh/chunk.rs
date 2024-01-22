@@ -3,7 +3,7 @@ use vek::{Vec2, Vec3};
 
 use crate::{
     block::BlockMap,
-    render::{atlas::BlockAtlas, vertex::TerrainVertex},
+    render::{atlas::BlockAtlas, pipelines::terrain::TerrainVertex},
 };
 
 pub fn create_chunk_mesh(
@@ -13,7 +13,6 @@ pub fn create_chunk_mesh(
     block_map: &BlockMap,
     block_atlas: &BlockAtlas,
 ) -> Vec<TerrainVertex> {
-    
     let mut vertices = Vec::with_capacity(3000);
 
     for pos in chunk.iter() {

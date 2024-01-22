@@ -2,9 +2,17 @@ use std::collections::HashMap;
 
 use vek::Vec2;
 
-use crate::render::{buffer::Buffer, vertex::TerrainVertex};
+use crate::render::buffer::Buffer;
 
-use super::ChunkPos;
+use super::{
+    pipelines::{debug::DebugVertex, terrain::TerrainVertex},
+    ChunkPos,
+};
+
+#[derive(Default)]
+pub struct DebugRender {
+    pub mesh: Option<Buffer<DebugVertex>>,
+}
 
 #[derive(Default)]
 pub struct TerrainRender {

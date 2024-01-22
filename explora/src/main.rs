@@ -59,6 +59,12 @@ fn initialize_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<
             &[],
         )?
         .with_system_with_dependencies(
+            explora::debug::DEBUG_SYSTEM,
+            explora::debug::debug_update_system,
+            &[explora::terrain::TERRAIN_CHUNK_MESH_SYSTEM],
+            &[explora::render::SYSTEM_STAGE_PRE_RENDER],
+        )?
+        .with_system_with_dependencies(
             explora::render::SYSTEM_STAGE_UI_DRAW_WIDGETS,
             explora::ui::ui_debug_render_system,
             &[],
