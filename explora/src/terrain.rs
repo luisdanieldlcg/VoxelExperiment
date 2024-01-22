@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use common::{
     resources::{TerrainConfig, TerrainMap},
     SysResult,

@@ -574,8 +574,8 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
         }
     }
 
-    if let Some(mesh) = &system.debug_render.mesh {
-        render_pass.set_pipeline(&renderer.pipelines.debug.pipeline);
+    render_pass.set_pipeline(&renderer.pipelines.debug.pipeline);
+    for mesh in system.debug_render.mesh.iter() {
         render_pass.set_vertex_buffer(0, mesh.slice());
         render_pass.draw(0..mesh.len(), 0..1);
     }

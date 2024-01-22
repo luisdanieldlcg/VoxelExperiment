@@ -67,6 +67,28 @@ impl Input {
         }
     }
 
+    pub fn press_mouse(&mut self, button: winit::event::MouseButton) {
+        match button {
+            winit::event::MouseButton::Left => self.buttons[0] = true,
+            winit::event::MouseButton::Right => self.buttons[1] = true,
+            winit::event::MouseButton::Middle => self.buttons[2] = true,
+            winit::event::MouseButton::Back => self.buttons[3] = true,
+            winit::event::MouseButton::Forward => self.buttons[4] = true,
+            winit::event::MouseButton::Other(code) => self.buttons[code as usize] = true,
+        }
+    }
+
+    pub fn release_mouse(&mut self, button: winit::event::MouseButton) {
+        match button {
+            winit::event::MouseButton::Left => self.buttons[0] = false,
+            winit::event::MouseButton::Right => self.buttons[1] = false,
+            winit::event::MouseButton::Middle => self.buttons[2] = false,
+            winit::event::MouseButton::Back => self.buttons[3] = false,
+            winit::event::MouseButton::Forward => self.buttons[4] = false,
+            winit::event::MouseButton::Other(code) => self.buttons[code as usize] = false,
+        }
+    }
+
     pub fn release(&mut self, input: Key) {
         self.pressed[input as usize] = false;
     }

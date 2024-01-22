@@ -4,6 +4,7 @@ pub mod client;
 pub mod debug;
 pub mod error;
 pub mod input;
+pub mod ray;
 pub mod render;
 pub mod run;
 pub mod scene;

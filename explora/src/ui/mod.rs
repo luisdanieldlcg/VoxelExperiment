@@ -1,4 +1,5 @@
 use common::{
+    chunk::chunk_pos_from_world_pos,
     clock::Clock,
     resources::{GameMode, Ping, TerrainConfig, TerrainMap},
     SysResult,
@@ -85,7 +86,7 @@ pub fn ui_debug_render_system(mut system: EguiRenderSystem) -> SysResult {
                 "World Position: ({:.2}, {:.2}, {:.2})",
                 pos.x, pos.y, pos.z
             ));
-            let chunk_pos = Vec2::new((pos.x / 16.0).floor() as i32, (pos.z / 16.0).floor() as i32);
+            let chunk_pos = chunk_pos_from_world_pos(pos);
 
             ui.label(format!(
                 "Chunk Position: (X: {}, Z: {})",

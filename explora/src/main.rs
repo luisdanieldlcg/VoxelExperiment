@@ -11,9 +11,12 @@ use explora::{
     ui::EguiInput,
     window::{Window, WindowEvent},
 };
-fn main() -> apecs::anyhow::Result<()> {
-    common::init_logger("wgpu=warn,naga=error,apecs=warn");
 
+fn main() -> apecs::anyhow::Result<()> {
+    // common::init_logger("wgpu=warn,naga=error,apecs=warn");
+    tracing_subscriber::fmt::init();
+
+    // tracing::info!("Hello from tracing");
     let (window, event_loop) = Window::new().unwrap_or_else(|error| match error {
         explora::error::Error::Window(e) => panic!("{:?}", e),
     });

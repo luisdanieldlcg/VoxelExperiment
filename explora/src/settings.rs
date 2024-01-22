@@ -8,7 +8,7 @@ impl Default for GameplaySettings {
         Self {
             // 100% means default sensitivity
             mouse_sensitivity: 100,
-            free_camera_speed: 50.0,
+            free_camera_speed: 20.0,
         }
     }
 }

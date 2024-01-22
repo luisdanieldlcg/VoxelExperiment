@@ -24,3 +24,5 @@ pollster = "0.3.0"
 wgpu = "0.18.0" 
 bytemuck = { version = "1.14.0", features = ["derive"] }
 image = "0.24.8"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"

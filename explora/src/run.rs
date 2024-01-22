@@ -70,6 +70,17 @@ pub fn run(event_loop: EventLoop<()>, mut client: Client) {
                                     }
                                 }
                             },
+                            winit::event::WindowEvent::MouseInput { button, state, .. } => {
+                                let input = client.state_mut().resource_mut::<Input>();
+                                match state {
+                                    winit::event::ElementState::Pressed => {
+                                        input.press_mouse(button);
+                                    },
+                                    winit::event::ElementState::Released => {
+                                        input.release_mouse(button);
+                                    },
+                                }
+                            },
                             winit::event::WindowEvent::RedrawRequested => {
                                 let clock = client.state_mut().resource_mut::<Clock>();
                                 clock.tick();

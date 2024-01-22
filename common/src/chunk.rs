@@ -159,6 +159,21 @@ impl Iterator for ChunkIter {
     }
 }
 
+pub fn chunk_pos_from_world_pos(world_pos: Vec3<f32>) -> Vec2<i32> {
+    Vec2::new(
+        (world_pos.x / Chunk::SIZE.x as f32).floor() as i32,
+        (world_pos.z / Chunk::SIZE.z as f32).floor() as i32,
+    )
+}
+
+pub fn world_pos_from_chunk_pos(chunk_pos: Vec2<i32>) -> Vec3<i32> {
+    Vec3::new(
+        chunk_pos.x * Chunk::SIZE.x as i32,
+        0,
+        chunk_pos.y * Chunk::SIZE.z as i32,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use vek::Vec3;

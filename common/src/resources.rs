@@ -1,8 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use vek::Vec2;
+use vek::{Vec2, Vec3};
 
-use crate::{chunk::Chunk, uid::Uid};
+use crate::{
+    block::BlockId,
+    chunk::{chunk_pos_from_world_pos, world_pos_from_chunk_pos, Chunk},
+    uid::Uid,
+};
 
 /// This resource stores the time passed since the previous tick
 #[derive(Default)]
@@ -16,6 +20,22 @@ pub struct ProgramTime(pub f64);
 pub struct TerrainMap {
     pub chunks: HashMap<Vec2<i32>, Chunk>,
     pub pending_chunks: HashSet<Vec2<i32>>,
+}
+
+impl TerrainMap {
+    /// Returns the block at the given world position
+    pub fn get_block(&self, world_pos: Vec3<f32>) -> Option<BlockId> {
+        if let Some((chunk, chunk_pos)) = self.get_chunk(world_pos) {
+            let block_pos = world_pos.map(|f| f as i32) - world_pos_from_chunk_pos(chunk_pos);
+            return chunk.get(block_pos);
+        }
+        None
+    }
+
+    pub fn get_chunk(&self, world_pos: Vec3<f32>) -> Option<(&Chunk, Vec2<i32>)> {
+        let chunk_pos = chunk_pos_from_world_pos(world_pos);
+        self.chunks.get(&chunk_pos).map(|chunk| (chunk, chunk_pos))
+    }
 }
 
 #[derive(Default)]

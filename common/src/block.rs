@@ -12,6 +12,10 @@ impl BlockId {
     pub const fn is_air(self) -> bool {
         matches!(self, BlockId::Air)
     }
+
+    pub const fn is_solid(self) -> bool {
+        !self.is_air()
+    }
 }
 
 impl From<&str> for BlockId {

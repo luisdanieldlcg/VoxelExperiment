@@ -11,7 +11,7 @@ use super::{
 
 #[derive(Default)]
 pub struct DebugRender {
-    pub mesh: Option<Buffer<DebugVertex>>,
+    pub mesh: Vec<Buffer<DebugVertex>>,
 }
 
 #[derive(Default)]
