@@ -3,7 +3,7 @@ use vek::Vec3;
 use crate::render::{texture::Texture, Vertex};
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Zeroable, bytemuck::Pod)]
+#[derive(Copy, Clone, Debug, bytemuck::Zeroable, bytemuck::Pod, Default)]
 pub struct DebugVertex {
     pub pos: [f32; 3],
     pub color: [f32; 4],
@@ -70,9 +70,9 @@ impl DebugPipeline {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None,
                 unclipped_depth: false,
-                polygon_mode: wgpu::PolygonMode::Line,
+                polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
             depth_stencil: Some(wgpu::DepthStencilState {

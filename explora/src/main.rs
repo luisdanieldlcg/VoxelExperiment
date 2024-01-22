@@ -48,6 +48,12 @@ fn initialize_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<
         .with_default_resource::<GameplaySettings>()?
         .with_resource(window)?
         .with_plugin(render_plugin)?
+        .with_system_with_dependencies(
+            explora::debug::DEBUG_SYSTEM,
+            explora::debug::debug_update_system,
+            &[],
+            &[explora::terrain::CHUNK_LOAD_SYSTEM],
+        )?
         .with_system(
             explora::terrain::CHUNK_LOAD_SYSTEM,
             explora::terrain::chunk_load_system,
@@ -56,12 +62,6 @@ fn initialize_ecs(client: &mut Client, window: Window) -> apecs::anyhow::Result<
             explora::terrain::TERRAIN_CHUNK_MESH_SYSTEM,
             explora::terrain::terrain_chunk_mesh,
             &[terrain::CHUNK_LOAD_SYSTEM],
-            &[],
-        )?
-        .with_system_with_dependencies(
-            explora::debug::DEBUG_SYSTEM,
-            explora::debug::debug_update_system,
-            &[explora::terrain::TERRAIN_CHUNK_MESH_SYSTEM],
             &[explora::render::SYSTEM_STAGE_PRE_RENDER],
         )?
         .with_system_with_dependencies(

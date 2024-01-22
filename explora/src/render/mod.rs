@@ -1,6 +1,7 @@
 pub mod atlas;
 pub mod buffer;
 pub mod error;
+pub mod mesh;
 pub mod pipelines;
 pub mod resources;
 pub mod texture;
@@ -370,6 +371,10 @@ impl Renderer {
         Buffer::new(&self.device, wgpu::BufferUsages::VERTEX, data)
     }
 
+    pub fn write_buffer<T: bytemuck::Pod>(&mut self, buffer: &Buffer<T>, data: &[T]) {
+        buffer.write(&self.queue, data);
+    }
+
     pub fn create_terrain_chunk_mesh(
         &mut self,
         chunk_pos: ChunkPos,
@@ -549,6 +554,7 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
         occlusion_query_set: None,
         timestamp_writes: None,
     });
+    render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
 
     if !system.terrain.chunks.is_empty() {
         if system.terrain.wireframe {
@@ -556,7 +562,6 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
         } else {
             render_pass.set_pipeline(&renderer.pipelines.terrain.pipeline);
         }
-        render_pass.set_bind_group(0, &renderer.core_bind_group, &[]);
         render_pass.set_index_buffer(
             renderer.terrain_index_buffer.slice(),
             wgpu::IndexFormat::Uint32,
@@ -570,6 +575,7 @@ fn render_system(mut system: RenderSystem) -> apecs::anyhow::Result<ShouldContin
     }
 
     if let Some(mesh) = &system.debug_render.mesh {
+        render_pass.set_pipeline(&renderer.pipelines.debug.pipeline);
         render_pass.set_vertex_buffer(0, mesh.slice());
         render_pass.draw(0..mesh.len(), 0..1);
     }
