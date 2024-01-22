@@ -1,5 +1,5 @@
 [package]
-name = "client"
+name = "common"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,4 @@ edition = "2021"
 
 [dependencies]
 tracing.workspace = true
-common = { path = "../common" }
-winit = "0.29.10"
-pollster = "0.3.0"
-wgpu = "0.19.1"
+tracing-subscriber = "0.3.18"

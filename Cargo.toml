@@ -4,9 +4,10 @@ default-members = [
     "client",
 ]
 members = [ 
-    "client",
+    "client", "common",
     "server",
     "server-cli"
 ]
 
 [workspace.dependencies]
+tracing = "0.1.40"
