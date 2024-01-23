@@ -1,24 +1,11 @@
-use std::sync::Arc;
+use crate::{png_utils, renderer::texture::Texture};
 
-use wgpu::util::DeviceExt;
+use self::pipelines::Pipelines;
+use std::sync::Arc;
 use winit::window::Window;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
-    pub position: [f32; 3],
-}
-
-impl Vertex {
-    pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        const ATTRS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x3];
-        wgpu::VertexBufferLayout {
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &ATTRS,
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-        }
-    }
-}
+pub mod pipelines;
+pub mod texture;
 
 /// Manages the rendering of the application.
 pub struct Renderer {
@@ -32,8 +19,8 @@ pub struct Renderer {
     /// The surface configuration. This is used for configuring the surface.
     config: wgpu::SurfaceConfiguration,
     /// The render pipeline configuration.
-    render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
+    pipelines: Pipelines,
+    common_bind_group: wgpu::BindGroup,
 }
 
 impl Renderer {
@@ -66,77 +53,65 @@ impl Renderer {
         let config = surface.get_default_config(&adapter, width, height).unwrap();
         surface.configure(&device, &config);
 
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[],
-            push_constant_ranges: &[],
+        let image = png_utils::read("assets/textures/blocks/grass_side.png").unwrap();
+        let texture = Texture::new(&device, &queue, image);
+
+        let common_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Common Bind Group Layout"),
+                entries: &[
+                    // // Globals
+                    // wgpu::BindGroupLayoutEntry {
+                    //     binding: 0,
+                    //     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    //     ty: wgpu::BindingType::Buffer {
+                    //         ty: wgpu::BufferBindingType::Uniform,
+                    //         has_dynamic_offset: false,
+                    //         min_binding_size: None,
+                    //     },
+                    //     count: None,
+                    // },
+                    // Atlas Texture
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    // Atlas Texture Sampler
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let common_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Common Bind Group"),
+            layout: &common_bind_group_layout,
+            entries: &[
+                // wgpu::BindGroupEntry {
+                //     binding: 0,
+                //     resource: uniforms_buffer.as_entire_binding(),
+                // },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                },
+            ],
         });
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: None,
-            source: wgpu::ShaderSource::Wgsl(
-                include_str!("../../../assets/shaders/terrain.wgsl").into(),
-            ),
-        });
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[Vertex::desc()],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::all(),
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            // depth_stencil: Some(wgpu::DepthStencilState {
-            //     format: texture::Texture::DEPTH_FORMAT,
-            //     depth_write_enabled: true,
-            //     depth_compare: wgpu::CompareFunction::Less,
-            //     stencil: wgpu::StencilState::default(),
-            //     bias: wgpu::DepthBiasState::default(),
-            // }),
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
-        let triangle_vertices = [
-            Vertex {
-                position: [0.0, 0.5, 0.0],
-            }, // A
-            Vertex {
-                position: [-0.5, -0.5, 0.0],
-            }, // B
-            Vertex {
-                position: [0.5, -0.5, 0.0],
-            }, // C
-        ];
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&triangle_vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
+        let pipelines = Pipelines::new(&device, &config, &[&common_bind_group_layout]);
         tracing::info!("Renderer initialized.");
 
         Self {
@@ -145,8 +120,8 @@ impl Renderer {
             queue,
             config,
             window,
-            render_pipeline,
-            vertex_buffer,
+            pipelines,
+            common_bind_group,
         }
     }
 
@@ -196,11 +171,10 @@ impl Renderer {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.draw(0..3, 0..1);
+            self.pipelines
+                .terrain
+                .draw(&mut render_pass, &self.common_bind_group);
         }
-
         self.queue.submit(Some(encoder.finish()));
         output.present();
     }

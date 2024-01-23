@@ -12,3 +12,4 @@ winit = "0.29.10"
 pollster = "0.3.0"
 wgpu = "0.19.1"
 bytemuck = { version = "1.14.0", features = ["derive"] }
+png = "0.17.11"
