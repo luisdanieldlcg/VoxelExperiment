@@ -8,8 +8,9 @@ use std::{
 pub struct PngImage {
     pub width: u32,
     pub height: u32,
-    pub buffer: Vec<u8>,
+    pub pixels: Vec<u8>,
 }
+
 
 #[derive(Debug)]
 pub enum PngImageError {
@@ -73,6 +74,6 @@ pub fn read<P: AsRef<Path>>(path: P) -> Result<PngImage, PngImageError> {
     Ok(PngImage {
         width: reader.info().width,
         height: reader.info().height,
-        buffer: image,
+        pixels: image,
     })
 }

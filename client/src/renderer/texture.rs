@@ -31,7 +31,7 @@ impl Texture {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &image.buffer,
+            &image.pixels,
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * image.width),

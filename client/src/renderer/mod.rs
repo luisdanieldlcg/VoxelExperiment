@@ -6,6 +6,7 @@ use winit::window::Window;
 
 pub mod pipelines;
 pub mod texture;
+pub mod texture_packer;
 
 /// Manages the rendering of the application.
 pub struct Renderer {
@@ -113,7 +114,7 @@ impl Renderer {
 
         let pipelines = Pipelines::new(&device, &config, &[&common_bind_group_layout]);
         tracing::info!("Renderer initialized.");
-
+        texture_packer::pack_textures("assets/block");
         Self {
             surface,
             device,
