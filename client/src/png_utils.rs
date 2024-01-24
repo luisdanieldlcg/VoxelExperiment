@@ -77,3 +77,22 @@ pub fn read<P: AsRef<Path>>(path: P) -> Result<PngImage, PngImageError> {
         pixels: image,
     })
 }
+pub type Pixel = [u8; 4];
+
+pub const fn get_pixel(buffer: &[u8], width: u32, x: u32, y: u32) -> Pixel {
+    let index = (y * width + x) as usize * 4;
+    [
+        buffer[index],
+        buffer[index + 1],
+        buffer[index + 2],
+        buffer[index + 3],
+    ]
+}
+
+pub fn set_pixel(buffer: &mut [u8], width: u32, x: u32, y: u32, pixel: Pixel) {
+    let index = (y * width + x) as usize * 4;
+    buffer[index] = pixel[0];
+    buffer[index + 1] = pixel[1];
+    buffer[index + 2] = pixel[2];
+    buffer[index + 3] = pixel[3];
+}

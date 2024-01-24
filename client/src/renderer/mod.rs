@@ -113,8 +113,8 @@ impl Renderer {
         });
 
         let pipelines = Pipelines::new(&device, &config, &[&common_bind_group_layout]);
+        texture_packer::pack_textures("assets/textures/blocks");
         tracing::info!("Renderer initialized.");
-        texture_packer::pack_textures("assets/block");
         Self {
             surface,
             device,

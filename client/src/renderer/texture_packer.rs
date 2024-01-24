@@ -9,7 +9,6 @@ use crate::png_utils;
 /// # Limitations
 /// - All textures must be of the same size.
 pub fn pack_textures<P: AsRef<Path>>(resource: P) {
-
     let paths = fs::read_dir(resource)
         .unwrap()
         .map(|x| x.map(|x| x.path()))
@@ -51,18 +50,13 @@ pub fn pack_textures<P: AsRef<Path>>(resource: P) {
         let pixel_x = i % atlas_tile_count * image.width as usize;
         let pixel_y = i / atlas_tile_count * image.height as usize;
 
-        for row in 0..atlas_width {
-            for col in 0..atlas_height {
-                // let atlas_index = (row + pixel_x) * 4 + (col + pixel_y) * atlas_width * 4;
-                // let image_index = row * 4 + col * image.width as usize * 4;
-
-                // pixels[atlas_index] = image.pixels[image_index];
-                // pixels[atlas_index + 1] = image.pixels[image_index + 1];
-                // pixels[atlas_index + 2] = image.pixels[image_index + 2];
-                // pixels[atlas_index + 3] = image.pixels[image_index + 3];
+        for y in 0..image.height as usize {
+            for x in 0..image.width as usize {
+                let pixel = png_utils::get_pixel(&image.pixels, image.width, x as u32, y as u32);
+                png_utils::set_pixel(&mut pixels, atlas_width as u32, pixel_x as u32 + x as u32, pixel_y as u32 + y as u32, pixel);
             }
         }
     }
-
     png_utils::write("assets/atlas.png", &pixels, atlas_width as u32, atlas_height as u32).unwrap();
 }
+
