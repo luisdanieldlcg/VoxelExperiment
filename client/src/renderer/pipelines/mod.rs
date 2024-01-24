@@ -7,11 +7,17 @@ pub struct Pipelines {
 impl Pipelines {
     pub fn new(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         surface_config: &wgpu::SurfaceConfiguration,
         common_bind_groups: &[&wgpu::BindGroupLayout],
     ) -> Self {
         Self {
-            terrain: terrain::TerrainPipeline::new(device, surface_config, common_bind_groups),
+            terrain: terrain::TerrainPipeline::new(
+                device,
+                surface_config,
+                queue,
+                common_bind_groups,
+            ),
         }
     }
 }
