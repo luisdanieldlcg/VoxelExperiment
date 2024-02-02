@@ -1,7 +1,6 @@
-use self::pipelines::Pipelines;
+use self::{buffer::Buffer, pipelines::Pipelines};
 use std::sync::Arc;
 use vek::Mat4;
-use wgpu::util::DeviceExt;
 use winit::window::Window;
 
 pub mod buffer;
@@ -11,6 +10,7 @@ pub mod texture_packer;
 
 /// Manages the rendering of the application.
 pub struct Renderer {
+    /// The window used for rendering.
     window: Arc<Window>,
     /// Surface on which the renderer will draw.
     surface: wgpu::Surface<'static>,
@@ -24,7 +24,8 @@ pub struct Renderer {
     pipelines: Pipelines,
     /// The common bind group. This is used for storing data that is common to all shaders.
     common_bind_group: wgpu::BindGroup,
-    uniforms_buffer: wgpu::Buffer,
+    /// Global uniforms
+    uniforms_buffer: Buffer<Uniforms>,
 }
 
 impl Renderer {
@@ -58,11 +59,11 @@ impl Renderer {
         surface.configure(&device, &config);
 
         let uniforms = Uniforms::default();
-        let uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Uniforms Buffer"),
-            contents: bytemuck::cast_slice(&[uniforms]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let uniforms_buffer = Buffer::new(
+            &device,
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            &[uniforms],
+        );
 
         let common_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -90,7 +91,8 @@ impl Renderer {
 
         let pipelines = Pipelines::new(&device, &queue, &config, &[&common_bind_group_layout]);
         texture_packer::pack_textures("assets/textures/blocks");
-        tracing::info!("Renderer initialized.");
+        log::info!("Renderer initialized.");
+
         Self {
             surface,
             device,
@@ -110,11 +112,7 @@ impl Renderer {
     }
 
     pub fn write_uniforms(&mut self, uniforms: Uniforms) {
-        self.queue.write_buffer(
-            &self.uniforms_buffer,
-            0,
-            bytemuck::cast_slice(&[uniforms]),
-        );
+        self.uniforms_buffer.write(&self.queue, &[uniforms]);
     }
 
     pub fn render(&mut self) {
@@ -123,7 +121,7 @@ impl Renderer {
             Err(wgpu::SurfaceError::Lost) => {
                 let (width, height) = self.window.inner_size().into();
                 self.resize(width, height);
-                tracing::warn!("Surface lost, resizing. A frame will be dropped.");
+                log::warn!("Surface lost, resizing. A frame will be dropped.");
                 return;
             },
             Err(e) => panic!("{:#?}", e),
@@ -173,6 +171,8 @@ pub struct Uniforms {
     proj: [[f32; 4]; 4],
 }
 
+const _: () = assert!(core::mem::size_of::<Uniforms>() % 16 == 0);
+
 impl Default for Uniforms {
     fn default() -> Self {
         Self {
@@ -183,7 +183,6 @@ impl Default for Uniforms {
 }
 
 impl Uniforms {
-
     pub fn new(view: Mat4<f32>, proj: Mat4<f32>) -> Self {
         Self {
             view: view.into_col_arrays(),

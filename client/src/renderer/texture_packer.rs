@@ -1,7 +1,5 @@
 use std::{fs, path::Path};
 
-use tracing::info;
-
 use crate::png_utils;
 
 /// Creates a texture atlas from the textures in the given directory.
@@ -29,7 +27,7 @@ pub fn pack_textures<P: AsRef<Path>>(resource: P) {
     }
     // the number of tiles per row/column
     let atlas_tile_count = (paths.len() as f32).sqrt().ceil() as usize;
-    tracing::info!("Atlas tile count: {}", atlas_tile_count);
+    log::info!("Atlas tile count: {}", atlas_tile_count);
 
     // I need to know what the size of each individual tile is.
     // I can get this from the first texture, assuming they are all the same size.
@@ -38,20 +36,19 @@ pub fn pack_textures<P: AsRef<Path>>(resource: P) {
     let atlas_height = first_image.height as usize * atlas_tile_count;
     let mut pixels = vec![0; atlas_width * atlas_height * 4];
 
-    tracing::info!("Atlas size: {}x{}", atlas_width, atlas_height);
+    log::info!("Atlas size: {}x{}", atlas_width, atlas_height);
 
     for (i, path) in paths.iter().enumerate() {
         if path.is_dir() {
             continue; // skip just for now
         }
-
         let Ok(image) = png_utils::read(path) else {
-            tracing::warn!("Failed to read texture at {}", path.display());
+            log::warn!("Failed to read texture at {}", path.display());
             continue;
         };
 
         if image.width != first_image.width || image.height != first_image.height {
-            tracing::warn!(
+            log::warn!(
                 "Found texture with invalid size: {}x{} (expected {}x{})",
                 image.width,
                 image.height,
@@ -60,8 +57,11 @@ pub fn pack_textures<P: AsRef<Path>>(resource: P) {
             );
             continue;
         }
-
-        info!(id=i, path=%path.display(), "Packing texture");
+        log::info!(
+            "Packing texture into atlas... id={} path={}",
+            i,
+            path.display()
+        );
 
         let pixel_x = i % atlas_tile_count * image.width as usize;
         let pixel_y = i / atlas_tile_count * image.height as usize;

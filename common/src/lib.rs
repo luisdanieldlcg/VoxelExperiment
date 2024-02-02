@@ -1,5 +1,5 @@
-use tracing::Level;
-
-pub fn tracing_init() {
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+pub fn log_init() {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .init()
 }

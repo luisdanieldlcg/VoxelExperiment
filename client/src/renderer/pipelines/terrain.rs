@@ -1,3 +1,8 @@
+use vek::{
+    num_traits::{One, Zero},
+    Vec3,
+};
+
 use crate::{
     png_utils,
     renderer::{buffer::Buffer, texture::Texture},
@@ -7,26 +12,32 @@ const SHADER: &str = include_str!("../../../../assets/shaders/terrain.wgsl");
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
+pub struct TerrainVertex {
     pub position: [f32; 3],
     pub texture_coords: [f32; 2],
 }
 
-impl Vertex {
+impl TerrainVertex {
+    pub fn new(pos: Vec3<f32>, texture_coords: [f32; 2]) -> Self {
+        Self {
+            position: pos.into_array(),
+            texture_coords,
+        }
+    }
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         const ATTRS: [wgpu::VertexAttribute; 2] =
             wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
         wgpu::VertexBufferLayout {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &ATTRS,
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<TerrainVertex>() as wgpu::BufferAddress,
         }
     }
 }
 
 pub struct TerrainPipeline {
     pipeline: wgpu::RenderPipeline,
-    vertex_buffer: Buffer<Vertex>,
+    vertex_buffer: Buffer<TerrainVertex>,
     index_buffer: Buffer<u32>,
     material_bind_group: wgpu::BindGroup,
 }
@@ -105,7 +116,7 @@ impl TerrainPipeline {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Vertex::desc()],
+                buffers: &[TerrainVertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -141,28 +152,7 @@ impl TerrainPipeline {
             multiview: None,
         });
 
-        let quad_vertices = [
-            Vertex {
-                position: [0.5, 0.5, 0.0],
-                texture_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-0.5, 0.5, 0.0],
-                texture_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [-0.5, -0.5, 0.0],
-                texture_coords: [0.0, 1.0],
-            },
-            Vertex {
-                position: [0.5, -0.5, 0.0],
-                texture_coords: [1.0, 1.0],
-            },
-        ];
-
-        let vertex_buffer = Buffer::new(device, wgpu::BufferUsages::VERTEX, &quad_vertices);
-
-        let index_buffer = Buffer::new(device, wgpu::BufferUsages::INDEX, &[0u32, 1, 2, 2, 3, 0]);
+        let (vertex_buffer, index_buffer) = create_cube(device);
 
         Self {
             pipeline: render_pipeline,
@@ -178,6 +168,71 @@ impl TerrainPipeline {
         pass.set_pipeline(&self.pipeline);
         pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        pass.draw_indexed(0..6, 0, 0..1);
+        pass.draw_indexed(0..self.index_buffer.len(), 0, 0..1);
     }
+}
+
+fn create_cube(device: &wgpu::Device) -> (Buffer<TerrainVertex>, Buffer<u32>) {
+    let origin = Vec3::zero();
+    let vertices = vec![
+        // North
+        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), [0.0, 0.0]),
+        TerrainVertex::new(origin + Vec3::unit_z(), [0.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_z() + Vec3::unit_y(), [1.0, 1.0]),
+        TerrainVertex::new(
+            origin + Vec3::unit_z() + Vec3::unit_x() + Vec3::unit_y(),
+            [1.0, 0.0],
+        ),
+        // South
+        TerrainVertex::new(origin, [0.0, 0.0]),
+        TerrainVertex::new(origin + Vec3::unit_x(), [0.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_y(), [1.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_y(), [1.0, 0.0]),
+        // East
+        TerrainVertex::new(origin + Vec3::unit_x(), [0.0, 0.0]),
+        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), [0.0, 1.0]),
+        TerrainVertex::new(
+            origin + Vec3::unit_x() + Vec3::unit_z() + Vec3::unit_y(),
+            [1.0, 1.0],
+        ),
+        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_y(), [1.0, 0.0]),
+        // West
+        TerrainVertex::new(origin + Vec3::unit_z(), [0.0, 0.0]),
+        TerrainVertex::new(origin, [0.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_y(), [1.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_z() + Vec3::unit_y(), [1.0, 0.0]),
+        // Bottom
+        TerrainVertex::new(origin, [0.0, 0.0]),
+        TerrainVertex::new(origin + Vec3::unit_z(), [0.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), [1.0, 1.0]),
+        TerrainVertex::new(origin + Vec3::unit_x(), [1.0, 0.0]),
+        // Top
+        TerrainVertex::new(origin + Vec3::unit_y(), [0.0, 0.0]),
+        TerrainVertex::new(origin + Vec3::unit_y() + Vec3::unit_x(), [0.0, 1.0]),
+        TerrainVertex::new(
+            origin + Vec3::unit_y() + Vec3::unit_x() + Vec3::unit_z(),
+            [1.0, 1.0],
+        ),
+        TerrainVertex::new(origin + Vec3::unit_y() + Vec3::unit_z(), [1.0, 0.0]),
+    ];
+
+    let vertex_buffer = Buffer::new(device, wgpu::BufferUsages::VERTEX, &vertices);
+    (
+        vertex_buffer,
+        compute_terrain_indices(device, vertices.len()),
+    )
+}
+
+fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<u32> {
+    assert!(vert_length <= u32::MAX as usize);
+    let indices = [0, 1, 2, 2, 3, 0]
+        .iter()
+        .cycle()
+        .copied()
+        .take(vert_length / 4 * 6)
+        .enumerate()
+        .map(|(i, b)| (i / 6 * 4 + b) as u32)
+        .collect::<Vec<_>>();
+
+    Buffer::new(device, wgpu::BufferUsages::INDEX, &indices)
 }

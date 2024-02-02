@@ -11,6 +11,8 @@ pub struct PngImage {
     pub pixels: Vec<u8>,
 }
 
+pub type Pixel = [u8; 4];
+
 #[derive(Debug)]
 pub enum PngImageError {
     IoError(std::io::Error),
@@ -76,7 +78,6 @@ pub fn read<P: AsRef<Path>>(path: P) -> Result<PngImage, PngImageError> {
         pixels: image,
     })
 }
-pub type Pixel = [u8; 4];
 
 pub const fn get_pixel(buffer: &[u8], width: u32, x: u32, y: u32) -> Pixel {
     let index = (y * width + x) as usize * 4;

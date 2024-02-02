@@ -10,5 +10,5 @@ members = [
 ]
 
 [workspace.dependencies]
-tracing = "0.1.40"
 vek = "0.16.1"
+log = "0.4.20"

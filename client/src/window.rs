@@ -7,7 +7,10 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::{renderer::{Renderer, Uniforms}, scene::Scene};
+use crate::{
+    renderer::{Renderer, Uniforms},
+    scene::Scene,
+};
 
 pub struct Window {
     platform: Arc<winit::window::Window>,
@@ -37,14 +40,16 @@ impl Window {
     pub fn run(&mut self) {
         let mut last_frame = Instant::now();
         let mut key_state = KeyState::default();
-        let size = self.platform.inner_size();
-        let mut scene = Scene::new(size.width as f32 / size.height as f32);
+        let mut scene = Scene::new();
+        // TODO: make this configurable
+        const SENSITIVITY: f32 = 100.0;
+
         let _ = self.event_loop.take().unwrap().run(move |event, elwt| {
             match event {
                 Event::WindowEvent { window_id, event } if window_id == self.platform.id() => {
                     match event {
                         WindowEvent::CloseRequested => {
-                            tracing::info!("Application close requested.");
+                            log::info!("Application close requested.");
                             elwt.exit();
                         },
                         WindowEvent::KeyboardInput { event, .. } => {
@@ -83,19 +88,23 @@ impl Window {
 
                     let now = Instant::now();
                     let dt = now - last_frame;
+
                     let matrices = scene.update(dt.as_secs_f32());
-                    self.renderer.write_uniforms(Uniforms::new(matrices.view, matrices.proj));
+                    self.renderer
+                        .write_uniforms(Uniforms::new(matrices.view, matrices.proj));
                     self.renderer.render();
                     last_frame = now;
                 },
-                Event::DeviceEvent {event: DeviceEvent::MouseMotion { delta: (dx, dy) }, .. } => {
-                    let sensitivity = 100.0;
+                Event::DeviceEvent {
+                    event: DeviceEvent::MouseMotion { delta: (dx, dy) },
+                    ..
+                } => {
                     let delta = Vec2::new(
-                        dx as f32 * (sensitivity / 100.0),
-                        dy as f32 * (sensitivity / 100.0),
+                        dx as f32 * (SENSITIVITY / 100.0),
+                        dy as f32 * (SENSITIVITY / 100.0),
                     );
                     scene.look(delta.x, delta.y);
-                }
+                },
                 _ => (),
             }
         });
@@ -109,7 +118,7 @@ impl Window {
             winit::window::CursorGrabMode::None
         };
         if let Err(e) = self.platform.set_cursor_grab(mode) {
-            tracing::warn!("Could not grab cursor in {:?} mode ({})", mode, e);
+            log::warn!("Could not grab cursor in {:?} mode ({})", mode, e);
         }
         // self.cursor_grabbed = value;
     }

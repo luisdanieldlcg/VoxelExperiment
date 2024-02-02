@@ -1,5 +1,5 @@
 fn main() {
-    common::tracing_init();
+    common::log_init();
 
-    tracing::info!("Starting server...");
+    log::info!("Starting server...");
 }
