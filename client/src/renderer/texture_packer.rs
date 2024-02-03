@@ -2,12 +2,17 @@ use std::{fs, path::Path};
 
 use crate::png_utils;
 
+pub struct Atlas {
+    pub size: u32,
+    pub tile_size: u32,
+}
+
 /// Creates a texture atlas from the textures in the given directory.
 ///
 /// # Limitations
 /// - All textures must be of the same size.
 /// - Subdirectories are being ignored.
-pub fn pack_textures<P: AsRef<Path>>(resource: P) {
+pub fn pack_textures<P: AsRef<Path>>(resource: P) -> Atlas {
     let paths = fs::read_dir(&resource)
         .unwrap()
         .map(|x| x.map(|x| x.path()))
@@ -79,6 +84,8 @@ pub fn pack_textures<P: AsRef<Path>>(resource: P) {
             }
         }
     }
+
+    // TODO: temporal
     png_utils::write(
         "assets/atlas.png",
         &pixels,
@@ -86,4 +93,9 @@ pub fn pack_textures<P: AsRef<Path>>(resource: P) {
         atlas_height as u32,
     )
     .unwrap();
+
+    Atlas {
+        size: atlas_width as u32,
+        tile_size: first_image.width,
+    }
 }

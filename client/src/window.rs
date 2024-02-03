@@ -88,11 +88,8 @@ impl Window {
 
                     let now = Instant::now();
                     let dt = now - last_frame;
-
                     let matrices = scene.update(dt.as_secs_f32());
-                    self.renderer
-                        .write_uniforms(Uniforms::new(matrices.view, matrices.proj));
-                    self.renderer.render();
+                    self.renderer.render(matrices);
                     last_frame = now;
                 },
                 Event::DeviceEvent {

@@ -1,4 +1,6 @@
-use self::{buffer::Buffer, pipelines::Pipelines};
+use crate::camera::Matrices;
+
+use self::{buffer::Buffer, pipelines::Pipelines, texture_packer::Atlas};
 use std::sync::Arc;
 use vek::Mat4;
 use winit::window::Window;
@@ -26,6 +28,8 @@ pub struct Renderer {
     common_bind_group: wgpu::BindGroup,
     /// Global uniforms
     uniforms_buffer: Buffer<Uniforms>,
+    /// Block Texture Atlas
+    atlas: Atlas,
 }
 
 impl Renderer {
@@ -90,7 +94,7 @@ impl Renderer {
         });
 
         let pipelines = Pipelines::new(&device, &queue, &config, &[&common_bind_group_layout]);
-        texture_packer::pack_textures("assets/textures/blocks");
+        let atlas = texture_packer::pack_textures("assets/textures/blocks");
         log::info!("Renderer initialized.");
 
         Self {
@@ -102,6 +106,7 @@ impl Renderer {
             pipelines,
             common_bind_group,
             uniforms_buffer,
+            atlas,
         }
     }
 
@@ -115,7 +120,14 @@ impl Renderer {
         self.uniforms_buffer.write(&self.queue, &[uniforms]);
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self, matrices: Matrices) {
+        self.write_uniforms(Uniforms::new(
+            matrices.view,
+            matrices.proj,
+            self.atlas.size,
+            self.atlas.tile_size,
+        ));
+
         let output = match self.surface.get_current_texture() {
             Ok(t) => t,
             Err(wgpu::SurfaceError::Lost) => {
@@ -169,6 +181,9 @@ impl Renderer {
 pub struct Uniforms {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
+    atlas_size: u32,
+    atlas_tile_size: u32,
+    _pad: [u32; 2],
 }
 
 const _: () = assert!(core::mem::size_of::<Uniforms>() % 16 == 0);
@@ -178,15 +193,21 @@ impl Default for Uniforms {
         Self {
             view: Mat4::identity().into_col_arrays(),
             proj: Mat4::identity().into_col_arrays(),
+            atlas_size: 0,
+            atlas_tile_size: 0,
+            _pad: [0; 2],
         }
     }
 }
 
 impl Uniforms {
-    pub fn new(view: Mat4<f32>, proj: Mat4<f32>) -> Self {
+    pub fn new(view: Mat4<f32>, proj: Mat4<f32>, atlas_size: u32, atlas_tile_size: u32) -> Self {
         Self {
             view: view.into_col_arrays(),
             proj: proj.into_col_arrays(),
+            atlas_size: 0,
+            atlas_tile_size: 0,
+            _pad: [0; 2],
         }
     }
 }

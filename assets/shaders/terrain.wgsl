@@ -1,6 +1,8 @@
 struct Uniforms {
     view: mat4x4<f32>,
     proj: mat4x4<f32>,
+    atlas_size: u32,
+    atlas_tile_size: u32,
 }
 
 @group(0) @binding(0)
@@ -8,7 +10,7 @@ var<uniform> uniforms: Uniforms;
 
 struct VertexIn {
     @location(0) vertex_pos: vec3<f32>,
-    @location(1) tex_coord: vec2<f32>,
+    @location(1) texture_id: u32,
 }
 
 struct VertexOut {
@@ -16,11 +18,36 @@ struct VertexOut {
     @location(1) tex_coord: vec2<f32>,
 }
 
+fn calculate_texture_coordinates(vertex_index: u32, texture_id: u32) -> vec2<f32> {
+    let tile_count = uniforms.atlas_size / uniforms.atlas_tile_size;
+    let tile_pixel_x  = f32((texture_id % tile_count) * uniforms.texture_tile_size);
+    let tile_pixel_y = f32((texture_id / tile_count) * uniforms.texture_tile_size);
+    // TODO: calculate coords
+	switch (vertex_index) {
+        case 0u: {
+            return vec2<f32>(0.0, 0.0);
+        }
+        case 1u: {
+            return vec2<f32>(0.0, 0.0);
+        }
+        case 2u: {
+            return vec2<f32>(0.0, 0.0);
+        }
+        case 3u: {
+            return vec2<f32>(0.0, 0.0);
+        }
+        default: {
+            return vec2<f32>(0.0, 0.0);
+        }
+	}
+}
+
+
 @vertex
-fn vs_main(in: VertexIn) -> VertexOut{
+fn vs_main(in: VertexIn, @builtin(vertex_index) v_index: u32) -> VertexOut{
     var out: VertexOut;
     out.vertex_pos = uniforms.proj * uniforms.view * vec4<f32>(in.vertex_pos, 1.0);
-    out.tex_coord = in.tex_coord;
+    out.tex_coord = calculate_texture_coordinates(v_index, in.texture_id);
     return out;
 }
 
