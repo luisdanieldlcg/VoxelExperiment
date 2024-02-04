@@ -6,7 +6,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: PngImage) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, image: &PngImage) -> Self {
         let size = wgpu::Extent3d {
             width: image.width,
             height: image.height,
@@ -23,7 +23,6 @@ impl Texture {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &handle,

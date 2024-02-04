@@ -15,31 +15,34 @@ struct VertexIn {
 
 struct VertexOut {
     @builtin(position) vertex_pos: vec4<f32>,
-    @location(1) tex_coord: vec2<f32>,
+    @location(0) tex_coord: vec2<f32>,
 }
 
-fn calculate_texture_coordinates(vertex_index: u32, texture_id: u32) -> vec2<f32> {
-    let tile_count = uniforms.atlas_size / uniforms.atlas_tile_size;
-    let tile_pixel_x  = f32((texture_id % tile_count) * uniforms.texture_tile_size);
-    let tile_pixel_y = f32((texture_id / tile_count) * uniforms.texture_tile_size);
-    // TODO: calculate coords
-	switch (vertex_index) {
-        case 0u: {
-            return vec2<f32>(0.0, 0.0);
-        }
-        case 1u: {
-            return vec2<f32>(0.0, 0.0);
-        }
-        case 2u: {
-            return vec2<f32>(0.0, 0.0);
-        }
-        case 3u: {
-            return vec2<f32>(0.0, 0.0);
-        }
-        default: {
-            return vec2<f32>(0.0, 0.0);
-        }
-	}
+fn calculate_texture_coordinates(v_index: u32, texture_id: u32) -> vec2<f32> {
+    let tile_width = uniforms.atlas_tile_size;
+    let tile_height = uniforms.atlas_tile_size;
+    // number of columns in the atlas
+    let cols = uniforms.atlas_size / tile_width; 
+    let pixel_x = f32((texture_id % cols) * tile_width);
+    let pixel_y = f32((texture_id / cols) * tile_height);
+
+    switch (v_index % 4u) {
+          case 0u: {
+              return vec2<f32>(pixel_x / f32(uniforms.atlas_size), (pixel_y + f32(tile_height)) / f32(uniforms.atlas_size));
+          }
+          case 1u: {
+              return vec2<f32>((pixel_x + f32(tile_width)) / f32(uniforms.atlas_size), (pixel_y + f32(tile_height)) / f32(uniforms.atlas_size));
+          }
+          case 2u: {
+              return vec2<f32>((pixel_x + f32(tile_width)) / f32(uniforms.atlas_size), pixel_y / f32(uniforms.atlas_size));
+          }
+          case 3u: {
+              return vec2<f32>(pixel_x / f32(uniforms.atlas_size), pixel_y  / f32(uniforms.atlas_size));
+          }
+          default: {
+              return vec2<f32>(0.0, 0.0);
+          }
+      }
 }
 
 

@@ -1,3 +1,5 @@
+use super::texture_packer;
+
 pub mod terrain;
 
 pub struct Pipelines {
@@ -10,6 +12,7 @@ impl Pipelines {
         queue: &wgpu::Queue,
         surface_config: &wgpu::SurfaceConfiguration,
         common_bind_groups: &[&wgpu::BindGroupLayout],
+        atlas: &texture_packer::Atlas,
     ) -> Self {
         Self {
             terrain: terrain::TerrainPipeline::new(
@@ -17,6 +20,7 @@ impl Pipelines {
                 surface_config,
                 queue,
                 common_bind_groups,
+                atlas,
             ),
         }
     }

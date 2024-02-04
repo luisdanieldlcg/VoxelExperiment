@@ -61,6 +61,8 @@ impl Renderer {
         let (width, height) = window.inner_size().into();
         let config = surface.get_default_config(&adapter, width, height).unwrap();
         surface.configure(&device, &config);
+        
+        let atlas = texture_packer::Atlas::pack_textures("assets/textures/blocks");
 
         let uniforms = Uniforms::default();
         let uniforms_buffer = Buffer::new(
@@ -92,9 +94,14 @@ impl Renderer {
                 resource: uniforms_buffer.as_entire_binding(),
             }],
         });
-
-        let pipelines = Pipelines::new(&device, &queue, &config, &[&common_bind_group_layout]);
-        let atlas = texture_packer::pack_textures("assets/textures/blocks");
+        
+        let pipelines = Pipelines::new(
+            &device,
+            &queue,
+            &config,
+            &[&common_bind_group_layout],
+            &atlas,
+        );
         log::info!("Renderer initialized.");
 
         Self {
@@ -124,7 +131,7 @@ impl Renderer {
         self.write_uniforms(Uniforms::new(
             matrices.view,
             matrices.proj,
-            self.atlas.size,
+            self.atlas.image.width,
             self.atlas.tile_size,
         ));
 

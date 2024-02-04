@@ -1,11 +1,7 @@
 use vek::Vec3;
 
-use crate::{
-    png_utils,
-    renderer::{buffer::Buffer, texture::Texture},
-};
+use crate::renderer::{buffer::Buffer, texture::Texture, texture_packer};
 
-const SHADER: &str = include_str!("../../../../assets/shaders/terrain.wgsl");
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -13,6 +9,8 @@ pub struct TerrainVertex {
     pub position: [f32; 3],
     pub texture_id: u32,
 }
+
+const SHADER: &str = include_str!("../../../../assets/shaders/terrain.wgsl");
 
 impl TerrainVertex {
     pub fn new(pos: Vec3<f32>, texture_id: u32) -> Self {
@@ -46,15 +44,13 @@ impl TerrainPipeline {
         surface_config: &wgpu::SurfaceConfiguration,
         queue: &wgpu::Queue,
         common_bind_groups: &[&wgpu::BindGroupLayout],
+        atlas: &texture_packer::Atlas,
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(SHADER.into()),
         });
-
-        let image = png_utils::read("assets/textures/blocks/grass_side.png").unwrap();
-        let texture = Texture::new(device, queue, image);
-
+        let texture = Texture::new(device, queue, &atlas.image);
         let material_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Material Bind Group Layout"),
@@ -161,9 +157,9 @@ impl TerrainPipeline {
     }
 
     pub fn draw<'a>(&'a mut self, pass: &mut wgpu::RenderPass<'a>, common_bg: &'a wgpu::BindGroup) {
+        pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, common_bg, &[]);
         pass.set_bind_group(1, &self.material_bind_group, &[]);
-        pass.set_pipeline(&self.pipeline);
         pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.draw_indexed(0..self.index_buffer.len(), 0, 0..1);
