@@ -2,7 +2,6 @@ use vek::Vec3;
 
 use crate::renderer::{buffer::Buffer, texture::Texture, texture_packer};
 
-
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct TerrainVertex {
@@ -130,14 +129,13 @@ impl TerrainPipeline {
                 unclipped_depth: false,
                 conservative: false,
             },
-            // depth_stencil: Some(wgpu::DepthStencilState {
-            //     format: texture::Texture::DEPTH_FORMAT,
-            //     depth_write_enabled: true,
-            //     depth_compare: wgpu::CompareFunction::Less,
-            //     stencil: wgpu::StencilState::default(),
-            //     bias: wgpu::DepthBiasState::default(),
-            // }),
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -146,7 +144,16 @@ impl TerrainPipeline {
             multiview: None,
         });
 
-        let (vertex_buffer, index_buffer) = create_cube(device);
+        let mut cube_meshes = vec![];
+
+        for z in 0..3 {
+            let offset = Vec3::new(0.0, 0.0, z as f32);
+            let vertices = create_cube(offset);
+            cube_meshes.extend(vertices);
+        }
+
+        let vertex_buffer = Buffer::new(device, wgpu::BufferUsages::VERTEX, &cube_meshes);
+        let index_buffer = compute_terrain_indices(device, cube_meshes.len());
 
         Self {
             pipeline: render_pipeline,
@@ -166,18 +173,18 @@ impl TerrainPipeline {
     }
 }
 
-fn create_cube(device: &wgpu::Device) -> (Buffer<TerrainVertex>, Buffer<u32>) {
-    let origin = Vec3::zero();
+fn create_cube(offset: Vec3<f32>) -> Vec<TerrainVertex> {
+    let origin = offset;
 
     // TODO: get these from a block map.
-    let north_texture_id = 0;
-    let south_texture_id = 0;
-    let east_texture_id = 0;
-    let west_texture_id = 0;
+    let north_texture_id = 1;
+    let south_texture_id = 1;
+    let east_texture_id = 1;
+    let west_texture_id = 1;
     let bottom_texture_id = 0;
-    let top_texture_id = 0;
+    let top_texture_id = 2;
 
-    let vertices = vec![
+    vec![
         // North
         TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), north_texture_id),
         TerrainVertex::new(origin + Vec3::unit_z(), north_texture_id),
@@ -217,13 +224,7 @@ fn create_cube(device: &wgpu::Device) -> (Buffer<TerrainVertex>, Buffer<u32>) {
             top_texture_id,
         ),
         TerrainVertex::new(origin + Vec3::unit_y() + Vec3::unit_z(), top_texture_id),
-    ];
-
-    let vertex_buffer = Buffer::new(device, wgpu::BufferUsages::VERTEX, &vertices);
-    (
-        vertex_buffer,
-        compute_terrain_indices(device, vertices.len()),
-    )
+    ]
 }
 
 fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<u32> {

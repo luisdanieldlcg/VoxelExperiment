@@ -1,4 +1,4 @@
-use crate::camera::Matrices;
+use crate::{camera::Matrices, renderer::texture::Texture};
 
 use self::{buffer::Buffer, pipelines::Pipelines, texture_packer::Atlas};
 use std::sync::Arc;
@@ -30,6 +30,8 @@ pub struct Renderer {
     uniforms_buffer: Buffer<Uniforms>,
     /// Block Texture Atlas
     atlas: Atlas,
+    /// Depth Buffer Attachment
+    depth_texture: Texture,
 }
 
 impl Renderer {
@@ -61,8 +63,6 @@ impl Renderer {
         let (width, height) = window.inner_size().into();
         let config = surface.get_default_config(&adapter, width, height).unwrap();
         surface.configure(&device, &config);
-        
-        let atlas = texture_packer::Atlas::pack_textures("assets/textures/blocks");
 
         let uniforms = Uniforms::default();
         let uniforms_buffer = Buffer::new(
@@ -94,7 +94,9 @@ impl Renderer {
                 resource: uniforms_buffer.as_entire_binding(),
             }],
         });
-        
+
+        let atlas = texture_packer::Atlas::pack_textures("assets/textures/blocks");
+
         let pipelines = Pipelines::new(
             &device,
             &queue,
@@ -102,6 +104,9 @@ impl Renderer {
             &[&common_bind_group_layout],
             &atlas,
         );
+
+        let depth_texture = Texture::depth(&device, config.width, config.height);
+
         log::info!("Renderer initialized.");
 
         Self {
@@ -114,6 +119,7 @@ impl Renderer {
             common_bind_group,
             uniforms_buffer,
             atlas,
+            depth_texture,
         }
     }
 
@@ -121,6 +127,7 @@ impl Renderer {
         self.config.width = width;
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
+        self.depth_texture = Texture::depth(&self.device, width, height);
     }
 
     pub fn write_uniforms(&mut self, uniforms: Uniforms) {
@@ -170,7 +177,14 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
@@ -212,8 +226,8 @@ impl Uniforms {
         Self {
             view: view.into_col_arrays(),
             proj: proj.into_col_arrays(),
-            atlas_size: 0,
-            atlas_tile_size: 0,
+            atlas_size,
+            atlas_tile_size,
             _pad: [0; 2],
         }
     }

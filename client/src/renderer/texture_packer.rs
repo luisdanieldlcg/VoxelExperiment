@@ -86,9 +86,6 @@ impl Atlas {
                 }
             }
         }
-
-        //TODO: test using image crate
-
         // TODO: temporal
         png_utils::write(
             "assets/atlas.png",

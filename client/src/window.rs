@@ -7,10 +7,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::{
-    renderer::{Renderer, Uniforms},
-    scene::Scene,
-};
+use crate::{renderer::Renderer, scene::Scene};
 
 pub struct Window {
     platform: Arc<winit::window::Window>,

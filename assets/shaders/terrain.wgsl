@@ -21,10 +21,9 @@ struct VertexOut {
 fn calculate_texture_coordinates(v_index: u32, texture_id: u32) -> vec2<f32> {
     let tile_width = uniforms.atlas_tile_size;
     let tile_height = uniforms.atlas_tile_size;
-    // number of columns in the atlas
-    let cols = uniforms.atlas_size / tile_width; 
-    let pixel_x = f32((texture_id % cols) * tile_width);
-    let pixel_y = f32((texture_id / cols) * tile_height);
+    let tiles_per_row = uniforms.atlas_size / tile_width; 
+    let pixel_x = f32((texture_id % tiles_per_row) * tile_width);
+    let pixel_y = f32((texture_id / tiles_per_row) * tile_height);
 
     switch (v_index % 4u) {
           case 0u: {
