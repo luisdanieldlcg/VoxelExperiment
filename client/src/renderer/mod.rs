@@ -1,4 +1,10 @@
-use crate::{camera::Matrices, renderer::texture::Texture};
+use crate::{
+    camera::Matrices,
+    renderer::{
+        pipelines::{CreatePipelineInfo, Shaders},
+        texture::Texture,
+    },
+};
 
 use self::{buffer::Buffer, pipelines::Pipelines, texture_packer::Atlas};
 use std::sync::Arc;
@@ -96,17 +102,15 @@ impl Renderer {
         });
 
         let atlas = texture_packer::Atlas::pack_textures("assets/textures/blocks");
-
-        let pipelines = Pipelines::new(
-            &device,
-            &queue,
-            &config,
-            &[&common_bind_group_layout],
-            &atlas,
-        );
+        let shaders = Shaders::new(&device);
+        let pipelines = shaders.create_pipelines(CreatePipelineInfo {
+            device: &device,
+            surface_config: &config,
+            common_bg: &common_bind_group_layout,
+            atlas: Texture::new(&device, &queue, &atlas.image),
+        });
 
         let depth_texture = Texture::depth(&device, config.width, config.height);
-
         log::info!("Renderer initialized.");
 
         Self {

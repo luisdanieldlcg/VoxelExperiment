@@ -1,6 +1,8 @@
 use vek::Vec3;
 
-use crate::renderer::{buffer::Buffer, texture::Texture, texture_packer};
+use crate::renderer::{buffer::Buffer, texture::Texture};
+
+use super::{FRAG_SHADER_ENTRY_POINT, VERT_SHADER_ENTRY_POINT};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -8,8 +10,6 @@ pub struct TerrainVertex {
     pub position: [f32; 3],
     pub texture_id: u32,
 }
-
-const SHADER: &str = include_str!("../../../../assets/shaders/terrain.wgsl");
 
 impl TerrainVertex {
     pub fn new(pos: Vec3<f32>, texture_id: u32) -> Self {
@@ -39,17 +39,12 @@ pub struct TerrainPipeline {
 
 impl TerrainPipeline {
     pub fn new(
+        shader: &wgpu::ShaderModule,
         device: &wgpu::Device,
         surface_config: &wgpu::SurfaceConfiguration,
-        queue: &wgpu::Queue,
         common_bind_groups: &[&wgpu::BindGroupLayout],
-        atlas: &texture_packer::Atlas,
+        texture_atlas: Texture,
     ) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: None,
-            source: wgpu::ShaderSource::Wgsl(SHADER.into()),
-        });
-        let texture = Texture::new(device, queue, &atlas.image);
         let material_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Material Bind Group Layout"),
@@ -81,11 +76,11 @@ impl TerrainPipeline {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                    resource: wgpu::BindingResource::TextureView(&texture_atlas.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&texture_atlas.sampler),
                 },
             ],
         });
@@ -107,13 +102,13 @@ impl TerrainPipeline {
             label: None,
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
+                module: shader,
+                entry_point: VERT_SHADER_ENTRY_POINT,
                 buffers: &[TerrainVertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
+                module: shader,
+                entry_point: FRAG_SHADER_ENTRY_POINT,
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
