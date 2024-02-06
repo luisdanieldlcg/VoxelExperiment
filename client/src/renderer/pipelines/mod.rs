@@ -30,6 +30,7 @@ impl Shaders {
             log::debug!("Loading shader: {}", full_specifier);
             let source = std::fs::read_to_string(&full_specifier)
                 .unwrap_or_else(|_| panic!("Failed to read shader file: {}", full_specifier));
+
             device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some(filename),
                 source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(&source)),

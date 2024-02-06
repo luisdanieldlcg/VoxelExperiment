@@ -7,7 +7,7 @@ pub struct Scene {
     movement_dir: Vec3<f32>,
 }
 // TODO: make this configurable
-const FLY_CAMERA_SPEED: f32 = 1.0;
+const FLY_CAMERA_SPEED: f32 = 3.0;
 
 impl Scene {
     pub fn new() -> Self {

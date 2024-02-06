@@ -1,4 +1,4 @@
-use vek::Vec3;
+use vek::{Mat4, Vec3};
 
 use crate::renderer::{buffer::Buffer, texture::Texture};
 
@@ -9,18 +9,20 @@ use super::{FRAG_SHADER_ENTRY_POINT, VERT_SHADER_ENTRY_POINT};
 pub struct TerrainVertex {
     pub position: [f32; 3],
     pub texture_id: u32,
+    pub normal: [f32; 3],
 }
 
 impl TerrainVertex {
-    pub fn new(pos: Vec3<f32>, texture_id: u32) -> Self {
+    pub fn new(pos: Vec3<f32>, texture_id: u32, normal: Vec3<f32>) -> Self {
         Self {
             position: pos.into_array(),
             texture_id,
+            normal: normal.into_array(),
         }
     }
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        const ATTRS: [wgpu::VertexAttribute; 2] =
-            wgpu::vertex_attr_array![0 => Float32x3, 1 => Uint32];
+        const ATTRS: [wgpu::VertexAttribute; 3] =
+            wgpu::vertex_attr_array![0 => Float32x3, 1 => Uint32, 2 => Float32x3];
 
         wgpu::VertexBufferLayout {
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -141,7 +143,7 @@ impl TerrainPipeline {
 
         let mut cube_meshes = vec![];
 
-        for z in 0..3 {
+        for z in 0..1 {
             let offset = Vec3::new(0.0, 0.0, z as f32);
             let vertices = create_cube(offset);
             cube_meshes.extend(vertices);
@@ -158,7 +160,11 @@ impl TerrainPipeline {
         }
     }
 
-    pub fn draw<'a>(&'a mut self, pass: &mut wgpu::RenderPass<'a>, common_bg: &'a wgpu::BindGroup) {
+    pub fn draw<'a>(
+        &'a mut self,
+        pass: &mut wgpu::RenderPass<'a>,
+        common_bg: &'a wgpu::BindGroup,
+    ) {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, common_bg, &[]);
         pass.set_bind_group(1, &self.material_bind_group, &[]);
@@ -181,44 +187,83 @@ fn create_cube(offset: Vec3<f32>) -> Vec<TerrainVertex> {
 
     vec![
         // North
-        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), north_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_z(), north_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_z() + Vec3::unit_y(), north_texture_id),
+        TerrainVertex::new(
+            origin + Vec3::unit_x() + Vec3::unit_z(),
+            north_texture_id,
+            Vec3::unit_z(),
+        ),
+        TerrainVertex::new(origin + Vec3::unit_z(), north_texture_id, Vec3::unit_z()),
+        TerrainVertex::new(
+            origin + Vec3::unit_z() + Vec3::unit_y(),
+            north_texture_id,
+            Vec3::unit_z(),
+        ),
         TerrainVertex::new(
             origin + Vec3::unit_z() + Vec3::unit_x() + Vec3::unit_y(),
             north_texture_id,
+            Vec3::unit_z(),
         ),
         // South
-        TerrainVertex::new(origin, south_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_x(), south_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_y(), south_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_y(), south_texture_id),
+        TerrainVertex::new(origin, south_texture_id, -Vec3::unit_z()),
+        TerrainVertex::new(origin + Vec3::unit_x(), south_texture_id, -Vec3::unit_z()),
+        TerrainVertex::new(
+            origin + Vec3::unit_x() + Vec3::unit_y(),
+            south_texture_id,
+            -Vec3::unit_z(),
+        ),
+        TerrainVertex::new(origin + Vec3::unit_y(), south_texture_id, -Vec3::unit_z()),
         // East
-        TerrainVertex::new(origin + Vec3::unit_x(), east_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), east_texture_id),
+        TerrainVertex::new(origin + Vec3::unit_x(), east_texture_id, Vec3::unit_x()),
+        TerrainVertex::new(
+            origin + Vec3::unit_x() + Vec3::unit_z(),
+            east_texture_id,
+            Vec3::unit_x(),
+        ),
         TerrainVertex::new(
             origin + Vec3::unit_x() + Vec3::unit_z() + Vec3::unit_y(),
             east_texture_id,
+            Vec3::unit_x(),
         ),
-        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_y(), east_texture_id),
+        TerrainVertex::new(
+            origin + Vec3::unit_x() + Vec3::unit_y(),
+            east_texture_id,
+            Vec3::unit_x(),
+        ),
         // West
-        TerrainVertex::new(origin + Vec3::unit_z(), west_texture_id),
-        TerrainVertex::new(origin, west_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_y(), west_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_z() + Vec3::unit_y(), west_texture_id),
+        TerrainVertex::new(origin + Vec3::unit_z(), west_texture_id, -Vec3::unit_x()),
+        TerrainVertex::new(origin, west_texture_id, -Vec3::unit_x()),
+        TerrainVertex::new(origin + Vec3::unit_y(), west_texture_id, -Vec3::unit_x()),
+        TerrainVertex::new(
+            origin + Vec3::unit_z() + Vec3::unit_y(),
+            west_texture_id,
+            -Vec3::unit_x(),
+        ),
         // Bottom
-        TerrainVertex::new(origin, bottom_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_z(), bottom_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_x() + Vec3::unit_z(), bottom_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_x(), bottom_texture_id),
+        TerrainVertex::new(origin, bottom_texture_id, -Vec3::unit_y()),
+        TerrainVertex::new(origin + Vec3::unit_z(), bottom_texture_id, -Vec3::unit_y()),
+        TerrainVertex::new(
+            origin + Vec3::unit_x() + Vec3::unit_z(),
+            bottom_texture_id,
+            -Vec3::unit_y(),
+        ),
+        TerrainVertex::new(origin + Vec3::unit_x(), bottom_texture_id, -Vec3::unit_y()),
         // Top
-        TerrainVertex::new(origin + Vec3::unit_y(), top_texture_id),
-        TerrainVertex::new(origin + Vec3::unit_y() + Vec3::unit_x(), top_texture_id),
+        TerrainVertex::new(origin + Vec3::unit_y(), top_texture_id, -Vec3::unit_y()),
+        TerrainVertex::new(
+            origin + Vec3::unit_y() + Vec3::unit_x(),
+            top_texture_id,
+            -Vec3::unit_y(),
+        ),
         TerrainVertex::new(
             origin + Vec3::unit_y() + Vec3::unit_x() + Vec3::unit_z(),
             top_texture_id,
+            -Vec3::unit_y(),
         ),
-        TerrainVertex::new(origin + Vec3::unit_y() + Vec3::unit_z(), top_texture_id),
+        TerrainVertex::new(
+            origin + Vec3::unit_y() + Vec3::unit_z(),
+            top_texture_id,
+            -Vec3::unit_y(),
+        ),
     ]
 }
 
@@ -235,3 +280,4 @@ fn compute_terrain_indices(device: &wgpu::Device, vert_length: usize) -> Buffer<
 
     Buffer::new(device, wgpu::BufferUsages::INDEX, &indices)
 }
+

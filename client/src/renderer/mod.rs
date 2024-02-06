@@ -8,7 +8,7 @@ use crate::{
 
 use self::{buffer::Buffer, pipelines::Pipelines, texture_packer::Atlas};
 use std::sync::Arc;
-use vek::Mat4;
+use vek::{Mat4, Vec3};
 use winit::window::Window;
 
 pub mod buffer;
@@ -144,6 +144,7 @@ impl Renderer {
             matrices.proj,
             self.atlas.image.width,
             self.atlas.tile_size,
+            Vec3::new(0.0, 1.0, 0.0),
         ));
 
         let output = match self.surface.get_current_texture() {
@@ -208,7 +209,8 @@ pub struct Uniforms {
     proj: [[f32; 4]; 4],
     atlas_size: u32,
     atlas_tile_size: u32,
-    _pad: [u32; 2],
+    sun_dir: [f32; 3],
+    _pad: [u32; 3],
 }
 
 const _: () = assert!(core::mem::size_of::<Uniforms>() % 16 == 0);
@@ -220,19 +222,21 @@ impl Default for Uniforms {
             proj: Mat4::identity().into_col_arrays(),
             atlas_size: 0,
             atlas_tile_size: 0,
-            _pad: [0; 2],
+            sun_dir: [0.0, 0.0, 0.0],
+            _pad: [0; 3],
         }
     }
 }
 
 impl Uniforms {
-    pub fn new(view: Mat4<f32>, proj: Mat4<f32>, atlas_size: u32, atlas_tile_size: u32) -> Self {
+    pub fn new(view: Mat4<f32>, proj: Mat4<f32>, atlas_size: u32, atlas_tile_size: u32, sun_dir: Vec3<f32>) -> Self {
         Self {
             view: view.into_col_arrays(),
             proj: proj.into_col_arrays(),
             atlas_size,
             atlas_tile_size,
-            _pad: [0; 2],
+            sun_dir: sun_dir.into_array(),
+            ..Default::default()
         }
     }
 }
